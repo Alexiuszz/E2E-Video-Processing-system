@@ -68,10 +68,6 @@ def send_to_hpc_and_get_transcript(audio_path: str, session_id: str, job_name: s
         except Exception as e:
             raise RuntimeError(f"Unexpected error: {e}")
 
-def openai_transcribe(audio_path: str) -> str:
-    
-    return "Transcription result from OpenAI API"
-
 
 @app.post("/transcribe/")
 async def transcribe_video(file: UploadFile = File(...)):
@@ -167,10 +163,10 @@ def transcribe_chunk(chunk_path):
     try:
         with open(chunk_path, "rb") as audio_file:
             response = client.audio.transcriptions.create(
-                model="whisper-1",
                 file=audio_file,
-                response_format="text",
-                language="en"
+                model="whisper-1",
+                response_format="verbose_json",
+                timestamp_granularities=["segment"]
             )
         return response
     except Exception as e:
@@ -178,6 +174,7 @@ def transcribe_chunk(chunk_path):
         print(error_message)
         traceback.print_exc()
         raise RuntimeError(error_message)
+
     
     
 
@@ -189,30 +186,39 @@ async def openai_transcribe(file: UploadFile = File(...)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only .wav audio files are supported"
         )
-    contents = await file.read()
     
+    contents = await file.read()
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmpfile:
         tmpfile.write(contents)
         audio_path = tmpfile.name
-    
+
     try:
         chunks = split_audio(audio_path)
-    #print(f"Split into {len(chunks)} chunks.")
+        print(f"Split into {len(chunks)} chunks.")
 
-        full_transcript = ""
+        full_segments = []
+        current_offset = 0.0  # To adjust timestamps
         for i, chunk_path in enumerate(chunks):
             print(f"Transcribing chunk {i+1}/{len(chunks)}...")
             try:
-                transcript = transcribe_chunk(chunk_path)
+                chunk_response = transcribe_chunk(chunk_path)
+                for segment in chunk_response.segments:
+                    adjusted_segment = {
+                        "id": segment.id,
+                        "start": segment.start + current_offset,
+                        "end": segment.end + current_offset,
+                        "text": segment.text
+                    }
+                    full_segments.append(adjusted_segment)
+                current_offset += AudioSegment.from_wav(chunk_path).duration_seconds
             except RuntimeError as e:
                 raise HTTPException(status_code=500, detail=str(e))
-            full_transcript += transcript+ "\n"
-            os.remove(chunk_path)
-    except Exception as e:  
+            finally:
+                os.remove(chunk_path)
+
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         os.remove(audio_path)
-    return JSONResponse(
-        content={"transcript": full_transcript.strip()},
-        headers={"Content-Disposition": "attachment; filename=transcription.txt"}
-    )
+
+    return JSONResponse(content={"segments": full_segments})
