@@ -1,0 +1,42 @@
+# FastAPI backend
+fastapi
+uvicorn[standard]
+python-multipart
+# aiofiles
+# pydantic
+python-dotenv
+httpx
+
+# Audio/video processing
+ffmpeg-python
+pydub
+
+# Transcription engines
+openai  # For Whisper API
+
+# Segmentation
+sklearn
+hdbscan
+umap-learn
+keybert
+punkt_tab
+bertopic
+sentence-transformers
+
+
+
+#  utilities
+requests
+numpy
+pandas
+
+
+# Frontend (React) – use package.json
+# You would typically run: npx create-react-app frontend --template typescript
+# Then install: axios, tailwindcss, etc.
+
+# Dev tools
+black
+isort
+python-dotenv
+
