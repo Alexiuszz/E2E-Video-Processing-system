@@ -2,13 +2,13 @@ import os
 import nltk
 from nltk.tokenize import sent_tokenize
 from sentence_transformers import SentenceTransformer
-# from bertopic.representation import OpenAI
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction import text
 from sklearn.cluster import KMeans
 from bertopic.representation import KeyBERTInspired
 from bertopic.representation import OpenAI
 from umap import UMAP
+from sklearn.decomposition import PCA
 from hdbscan import HDBSCAN
 import numpy as np
 import openai
@@ -37,6 +37,25 @@ def load_sentences(file_path):
     with open(file_path, "r") as f:
         return sent_tokenize(f.read())
 
+def load_json_transcript(file_path):
+    import json
+    with open(file_path, "r") as f:
+        transcript = json.load(f)
+    return transcript
+
+def extract_transcript(transcript) -> str:
+    """
+    Extracts the transcript text from the JSON format.
+    
+    Args:
+        transcript (JSON): The transcript in JSON format.        
+    Returns:
+        str: The extracted transcript text.
+    """
+    transcript =  " ".join([segment['text'].strip() for segment in transcript["segments"]])
+    
+    return sent_tokenize(transcript)
+
 # Encode using Sentence-BERT
 def get_embeddings(sentences, model_path):
     model = SentenceTransformer(model_path)
@@ -63,7 +82,7 @@ def segment_by_similarity(sentences, embeddings, depth_threshold=0.9,window_size
     return segments
     
 # Extract top-N keywords using KeyBERT
-def get_top_topic_words(segment, kw_model, top_n=5):
+def get_top_topic_words(segment, kw_model, top_n=9):
     doc = " ".join(segment)
     keywords = kw_model.extract_keywords(doc,keyphrase_ngram_range=(1, 1), top_n=top_n, stop_words="english")
     return [kw for kw, _ in keywords]
@@ -79,8 +98,12 @@ def merge_segments_by_topic(segments, embedding_model):
         nxt_topics = get_top_topic_words(nxt, kw_model)
 
         if len(set(cur_topics) & set(nxt_topics)) >= 2:
-            segments[i+1] = cur + nxt  # merge
+            segments[i-1] = cur + nxt  # merge
+        elif len(cur) < 3:
+            # If current segment is too short, merge it with the next one
+            segments[i+1] = cur + nxt
         else:
+            # If they are not similar enough, keep the current segment
             merged_segments.append(cur)
         i += 1
     if i == len(segments) - 1:
@@ -169,10 +192,12 @@ def label_segments_with_topics(segments, model_path):
     print("Encoding documents for topic modeling...")
     doc_embeddings = embedding_model.encode(docs, show_progress_bar=False)
 
-    # umap_model = UMAP(n_components=2,       # Allow more clustering expressiveness
-    #     n_neighbors=10,       # Slightly tighter focus
-    #     min_dist=0.0,         # Allow tight clusters
-    #     random_state=42)
+    umap_model = UMAP(n_components=5,       # Allow more clustering expressiveness
+        n_neighbors=5,       # Slightly tighter focus
+        min_dist=0.0,         # Allow tight clusters
+        random_state=42)
+    
+    # umap_model = PCA(n_components=5, random_state=42)  # Use PCA for dimensionality reduction
     
     n_clusters = len(set(map(tuple, doc_embeddings)))  # Unique vectors only
     # cluster_model = HDBSCAN(min_cluster_size=2, min_samples=1)
@@ -185,11 +210,11 @@ def label_segments_with_topics(segments, model_path):
     }))
     vectorizer_model = CountVectorizer(stop_words=custom_stopwords, min_df=2, ngram_range=(1, 2))
     # representation_model = KeyBERTInspired()
-    main_representation_model = OpenAI(openai, model="gpt-4o", chat=True)
+    label_representation_model = OpenAI(openai, model="gpt-4o", chat=True)
     list_representation_model = KeyBERTInspired()
     
     representation_model = {
-        "Main": main_representation_model,
+        "Main": label_representation_model,
         "Aspect1": list_representation_model
     }
 
@@ -213,27 +238,36 @@ def label_segments_with_topics(segments, model_path):
     
     
     results = []
-    # doc_idx = 0
-    # for i, segment in enumerate(segments):
-    #     if len(segment) < 3:
-    #         results.append((i, segment, "Too short"))
-    #     else:
-    #         topic_id = topics[doc_idx]
-    #         if topic_id < 0:
-    #             label = "Outlier"
-    #         else:
-    #             label = topic_model.get_topic_info().loc[topic_id, "Name"]
-    #         results.append((i, segment, label))
-    #         doc_idx += 1
+    doc_idx = 0
+    print(f"segments: {len(segments)}, topics: {len(topics)}")
+    info_df = topic_model.get_topic_info()
+
+    for i, segment in enumerate(segments):
+        if len(segment) < 3:
+            results.append((i, segment, "Too short", []))
+        else:
+            topic_id = topics[doc_idx]
+
+            # Handle outliers
+            if topic_id == -1 or topic_id not in info_df.index:
+                label = "Outlier"
+                keywords = []
+            else:
+                row = info_df.loc[topic_id]
+                label = row["Representation"][0] if isinstance(row["Representation"], list) else row["Representation"]
+                keywords = row["Aspect1"] if isinstance(row["Aspect1"], list) else [row["Aspect1"]]
+
+            results.append((i, segment, label, keywords))
+            doc_idx += 1
     return results
 
 # Full pipeline
-def process_transcript(file_path, output_path="segmented_transcript_4o.txt"):
+def process_transcript(file_path, output_path="segmented_transcript.txt"):
     if not os.path.exists(file_path):
         print(f"File not found: {file_path}")
         return
-
-    sentences = load_sentences(file_path)
+    transcript_json = load_json_transcript(file_path)
+    sentences = extract_transcript(transcript_json)
     # #print first two sentences
     # first_two = sentences[:2]
     # first_two = ["Lenses are incredible.","Lenses are analog computers that take light rays that come in and reprogram them to go in different directions to form an image."]
@@ -244,23 +278,28 @@ def process_transcript(file_path, output_path="segmented_transcript_4o.txt"):
     # similarities = model.similarity(embeddings[0], embeddings[1])
     
     # print(similarities)
+    
     embeddings, model = get_embeddings(sentences, model_path)
     segments = segment_by_similarity(sentences, embeddings, depth_threshold=0.7)
     
     merged_segments = merge_segments_by_topic(segments, model)
-    
+    print(f"Initial segments: {len(segments)}, Merged segments: {len(merged_segments)}")
     # kw_model = KeyBERT(model)
     # seg_topics = get_top_topic_words(merged_segments[4], kw_model, top_n=10)
     # results, total_tokens  = segment_and_label_texts(merged_segments, model="gpt-4o-mini")
     # new_segments = [seg for _, seg, _ in results]
+    
+    
     labeled_segments = label_segments_with_topics(merged_segments, model_path=model_path)
 
-    # print(f"\n🔢 Total tokens used: {total_tokens}\n")
-    # with open(output_path, "w") as f:
-    #     for start, end, text, label in results:
-    #         f.write(f"\n=== Segment {start} - {end} ===\n")
-    #         f.write(f"Topic: {label}\n")
-    #         # f.write(" ".join(text) + "\n")
+    # # print(f"\n🔢 Total tokens used: {total_tokens}\n")
+    with open(output_path, "w") as f:
+        for i, segment, label, topics in labeled_segments:
+            f.write(f"\n=== Segment {i} ===\n")
+            f.write(f"Label: {label}\n")
+            f.write(f"Topics: {topics}\n")
+            f.write(" ".join(segment) + "\n")
+            
             
     # print(f"from {len(segments)} segments to {len(merged_segments)} merged segments to  {len(results)} labelled segments.")
     # print(f"Processed {len(merged_segments)} segments.")
@@ -268,5 +307,6 @@ def process_transcript(file_path, output_path="segmented_transcript_4o.txt"):
     
 # ----------- Entry Point ---------------------------------------
 if __name__ == "__main__":
-    transcript_file = "transcript.txt"
-    process_transcript(transcript_file)
+    # transcript_file = "transcript.txt"
+    # process_transcript(transcript_file)
+    process_transcript("transcript.json")

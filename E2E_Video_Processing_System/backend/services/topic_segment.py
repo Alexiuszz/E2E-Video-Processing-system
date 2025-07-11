@@ -16,7 +16,6 @@ from bertopic.backend import OpenAIBackend
 
 from keybert import KeyBERT
 import pandas as pd
-from typing import JSON
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -30,7 +29,7 @@ model_path = os.environ.get("MODEL_PATH", "SentenceTransformer/all-MiniLM-L6-v2"
 
 openai.api_key = ApiKey
 
-def extract_transcript(transcript: JSON) -> str:
+def extract_transcript(transcript) -> str:
     """
     Extracts the transcript text from the JSON format.
     
@@ -39,7 +38,7 @@ def extract_transcript(transcript: JSON) -> str:
     Returns:
         str: The extracted transcript text.
     """
-    transcript =  " ".join([item['text'] for item in transcript])
+    transcript =  " ".join([segment['text'].strip() for segment in transcript["segments"]])
     
     return sent_tokenize(transcript)
 
@@ -105,16 +104,93 @@ def merge_segments_by_topic(segments, embedding_model):
         nxt_topics = get_top_topic_words(nxt, kw_model)
 
         if len(set(cur_topics) & set(nxt_topics)) >= 2:
-            segments[i+1] = cur + nxt  # merge
+            segments[i-1] = cur + nxt  # merge
+        elif len(cur) < 3:
+            # If current segment is too short, merge it with the next one
+            segments[i+1] = cur + nxt
         else:
+            # If they are not similar enough, keep the current segment
             merged_segments.append(cur)
         i += 1
     if i == len(segments) - 1:
         merged_segments.append(segments[-1])
     return merged_segments
 
+def label_segments_with_topics(segments, model_path):
+    """
+    Applies BERTopic to label segments with topics.
+    Args:
+        segments (list): List of segments to label.
+        model_path (str): Path to the Sentence-BERT model.
+    Returns:
+        list: List of labeled segments with topics.
+    """
+    docs = [" ".join(segment) for segment in segments if len(segment) >= 3]
 
-def process_transcript(transcript: JSON, with_timestamps = True):
+    if len(docs) < 3:
+        print("Too few valid segments for topic modeling.")
+        return [(i, segment, "Too short") for i, segment in enumerate(segments)]
+
+    embedding_model = SentenceTransformer(model_path)
+    
+    doc_embeddings = embedding_model.encode(docs, show_progress_bar=False)
+    
+    # Unique vectors only
+    n_clusters = len(set(map(tuple, doc_embeddings)))  
+    
+    cluster_model = KMeans(n_clusters=max(2, min(n_clusters, len(segments) - 1)), random_state=42)
+    
+    custom_stopwords = list(text.ENGLISH_STOP_WORDS.union({
+        'know', 'going', 'thats', 'theres', 'sort', 'thing', 'get', 'got', 'let',
+        'actually', 'maybe', 'say', 'okay', 'please', 'course', 'like', 'see',
+        'think', 'make', 'want', 'just', 'well', 'right'
+    }))
+    vectorizer_model = CountVectorizer(stop_words=custom_stopwords, min_df=2, ngram_range=(1, 2))
+
+    label_representation_model = OpenAI(openai, model="gpt-4o", chat=True)
+    list_representation_model = KeyBERTInspired()
+    
+    representation_model = {
+        "Main": label_representation_model,
+        "Aspect1": list_representation_model
+    }
+    
+    topic_model = BERTopic(
+        embedding_model=embedding_model,
+        hdbscan_model=cluster_model,
+        vectorizer_model=vectorizer_model,
+        representation_model=representation_model,
+        top_n_words=10
+    )
+    
+    topics, _ = topic_model.fit_transform(docs, embeddings=doc_embeddings)
+    
+    results = []
+    doc_idx = 0
+    print(f"segments: {len(segments)}, topics: {len(topics)}")
+    info_df = topic_model.get_topic_info()
+
+    for i, segment in enumerate(segments):
+        if len(segment) < 3:
+            results.append((i, segment, "Too short", []))
+        else:
+            topic_id = topics[doc_idx]
+
+            # Handle outliers
+            if topic_id == -1 or topic_id not in info_df.index:
+                label = "Outlier"
+                keywords = []
+            else:
+                row = info_df.loc[topic_id]
+                label = row["Representation"][0] if isinstance(row["Representation"], list) else row["Representation"]
+                keywords = row["Aspect1"] if isinstance(row["Aspect1"], list) else [row["Aspect1"]]
+
+            results.append((i, segment, label, keywords))
+            doc_idx += 1
+    return results
+    
+    
+def process_transcript(transcript, with_timestamps = True):
     """
     Processes the transcript to extract sentences and perform topic segmentation.
     

@@ -90,6 +90,7 @@ def label_segments_with_topics(segments, model_path):
     )
 
     topics, _ = topic_model.fit_transform(docs, embeddings=doc_embeddings)
+    
 
     results = []
     doc_idx = 0
