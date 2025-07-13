@@ -1,4 +1,5 @@
 import os
+from E2E_Video_Processing_System.backend.utils.text_processing import get_segment_bounds
 import nltk
 from nltk.tokenize import sent_tokenize
 from sentence_transformers import SentenceTransformer
@@ -29,21 +30,48 @@ model_path = os.environ.get("MODEL_PATH", "SentenceTransformer/all-MiniLM-L6-v2"
 
 openai.api_key = ApiKey
 
-def extract_transcript(transcript) -> str:
+def extract_transcript(transcript, with_timestamps = True) -> str:
     """
     Extracts the transcript text from the JSON format.
     
     Args:
-        transcript (JSON): The transcript in JSON format.        
+        transcript: str or dict: The transcript text or JSON object containing segments.
+        with_timestamps (bool): Whether the input transcript has timestamps.
+    Raises:
+        ValueError: If the transcript format is invalid.        
     Returns:
         str: The extracted transcript text.
     """
-    transcript =  " ".join([segment['text'].strip() for segment in transcript["segments"]])
+    try:
+        if with_timestamps:
+            transcript = " ".join([segment['text'].strip() for segment in transcript["segments"]])
+        else:
+            transcript = transcript.strip()
+    except (KeyError, AttributeError, TypeError):
+        raise ValueError("Invalid transcript format. Expected raw text or a dictionary with 'segments'.")
     
+    # Use NLTK to split the transcript into sentences
     return sent_tokenize(transcript)
+
 
 # Encode using Sentence-BERT
 def get_embeddings(sentences, model_path):
+    """
+    Encodes sentences into embeddings using Sentence-BERT.
+    Args:
+        sentences (list): List of sentences to encode.
+        model_path (str): Path to the Sentence-BERT model.
+    Raises:
+        ValueError: If the number of sentences is less than 60.
+    Raises:
+        ValueError: If no sentences are provided for embedding.
+    Returns:
+        tuple: Tuple containing the embeddings and the Sentence-BERT model.
+    """
+    if not sentences:
+        raise ValueError("No sentences provided for embedding.")
+    if len(sentences) < 60:
+        raise ValueError("At least 20 sentences are required for Segmentation.")
     model = SentenceTransformer(model_path)
     embeddings = model.encode(sentences, show_progress_bar=True)
     return embeddings, model
@@ -76,7 +104,7 @@ def segment_by_similarity(sentences, embeddings, depth_threshold=0.9,window_size
         segments.append(sentences[start:boundary])
         start = boundary
     segments.append(sentences[start:])
-    return segments
+    return segments, model
     
 # Extract top-N keywords using KeyBERT
 def get_top_topic_words(segment, kw_model, top_n=5):
@@ -84,12 +112,15 @@ def get_top_topic_words(segment, kw_model, top_n=5):
     keywords = kw_model.extract_keywords(doc,keyphrase_ngram_range=(1, 1), top_n=top_n, stop_words="english")
     return [kw for kw, _ in keywords]
 
-def merge_segments_by_topic(segments, embedding_model):
+def merge_segments_by_topic(segments, embedding_model, top_n=9, min_topics=2, min_seg_length=3):
     """
     Merges segments based on topic overlap using KeyBERT.
     Args:
         segments (list): List of segments to merge.
         embedding_model: The embedding model to use for topic extraction.
+        top_n (int): Number of top keywords to consider for merging.
+        min_topics (int): Minimum number of overlapping topics to merge segments.
+        min_seg_length (int): Minimum length of segments to consider for merging.
     Returns:
         list: List of merged segments.
     """
@@ -100,12 +131,12 @@ def merge_segments_by_topic(segments, embedding_model):
     while i < len(segments) - 1:
         cur = segments[i]
         nxt = segments[i+1]
-        cur_topics = get_top_topic_words(cur, kw_model)
-        nxt_topics = get_top_topic_words(nxt, kw_model)
+        cur_topics = get_top_topic_words(cur, kw_model, top_n=top_n)
+        nxt_topics = get_top_topic_words(nxt, kw_model, top_n=top_n)
 
-        if len(set(cur_topics) & set(nxt_topics)) >= 2:
+        if len(set(cur_topics) & set(nxt_topics)) >= min_topics:
             segments[i-1] = cur + nxt  # merge
-        elif len(cur) < 3:
+        elif len(cur) < min_seg_length:
             # If current segment is too short, merge it with the next one
             segments[i+1] = cur + nxt
         else:
@@ -189,33 +220,76 @@ def label_segments_with_topics(segments, model_path):
             doc_idx += 1
     return results
     
+def align_w_timestamp(seg_bounds, original_segments):
+    """
+    Aligns segment bounds with original segments to include timestamps.
     
+    Args:
+        seg_bounds (list): List of tuples with segment indices and labels.
+        original_segments (list): Original segments with timestamps.
+        
+    Returns:
+        list: Aligned segments with timestamps and labels.
+    """
+    aligned_segments = []
+    
+    for segment_idx, pos, label, topics in seg_bounds:
+        # use the position of next segment to determine the end time of current segment
+        # If this is the last segment, use the end of the last original segment
+        next_bound = seg_bounds[segment_idx + 1] if segment_idx + 1 < len(seg_bounds) else None
+        if next_bound:
+            next_pos = next_bound[1]
+            end = original_segments[next_pos - 1]["end"]
+        else:
+            next_pos = len(original_segments)
+            end = original_segments[-1]["end"]
+        
+        seg_texts = [original_segments[i] for i in range(pos, next_pos - 1) if i < len(original_segments)]
+        
+        aligned_segments.append({
+            "segment_idx": segment_idx,
+            "start": original_segments[pos]["start"],
+            "end": end,
+            "label": label,
+            "topics": topics,
+            "segments": seg_texts
+        })
+             
+    return aligned_segments
+   
 def process_transcript(transcript, with_timestamps = True):
     """
     Processes the transcript to extract sentences and perform topic segmentation.
     
     Args:
-        transcript (JSON): The transcript in JSON format.
-        with_timestamps (bool): Whether to include timestamps in the output.
+        transcript (str or dict): The transcript text or JSON object containing segments.
+        with_timestamps (bool): Whether input transcript has timestamps.
         
     Returns:
         list: A list of processed sentences or segments.
     """
-    sentences = extract_transcript(transcript)
+    sentences = extract_transcript(transcript, with_timestamps)
     
     if not sentences:
         return []
     
     # SBERT Sentence Embeddings
-    embeddings = get_embeddings(sentences, model_path)
+    embeddings, model = get_embeddings(sentences, model_path)
     
     # Segment by Similarity with Depth Scores
-    segments = segment_by_similarity(sentences, embeddings)
+    segments = segment_by_similarity(sentences, embeddings, depth_threshold=0.8, window_size=2)
     
     # Merge close segments using KeyBERT
-    segments = merge_segments_by_topic(segments, model_path)
+    segments = merge_segments_by_topic(segments, model, top_n=7, min_topics=2, min_seg_length=3)
     
     #  Apply BERTopic with Enhanced Labels
-    labeled_segments = label_segments_with_topics(segments, model_path)
+    labeled_segments = label_segments_with_topics(segments, model_path=model_path)
     
-    return labeled_segments
+    # Get segment bounds with original segments if transcript has timestamps 
+    if with_timestamps:
+        seg_bounds = get_segment_bounds(transcript["segments"], labeled_segments)
+        result = align_w_timestamp(seg_bounds, transcript["segments"])
+    else:
+        result = labeled_segments
+    
+    return result

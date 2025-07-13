@@ -1,3 +1,4 @@
+import re
 import os
 import nltk
 from nltk.tokenize import sent_tokenize
@@ -25,7 +26,7 @@ load_dotenv()
 
 ApiKey = os.environ.get("API_KEY")
 
-nltk.download("punkt")
+# nltk.download("punkt")
 
 # --------- Configuration ---------
 model_path = os.environ.get("MODEL_PATH", "SentenceTransformer/all-MiniLM-L6-v2")
@@ -87,19 +88,19 @@ def get_top_topic_words(segment, kw_model, top_n=9):
     keywords = kw_model.extract_keywords(doc,keyphrase_ngram_range=(1, 1), top_n=top_n, stop_words="english")
     return [kw for kw, _ in keywords]
 
-def merge_segments_by_topic(segments, embedding_model):
+def merge_segments_by_topic(segments, embedding_model, top_n=9, min_topics=2, min_seg_length=3):
     kw_model = KeyBERT(embedding_model)
     merged_segments = []
     i = 0
     while i < len(segments) - 1:
         cur = segments[i]
         nxt = segments[i+1]
-        cur_topics = get_top_topic_words(cur, kw_model)
-        nxt_topics = get_top_topic_words(nxt, kw_model)
+        cur_topics = get_top_topic_words(cur, kw_model, top_n=top_n)
+        nxt_topics = get_top_topic_words(nxt, kw_model, top_n=top_n)
 
-        if len(set(cur_topics) & set(nxt_topics)) >= 2:
+        if len(set(cur_topics) & set(nxt_topics)) >= min_topics:
             segments[i-1] = cur + nxt  # merge
-        elif len(cur) < 3:
+        elif len(cur) < min_seg_length:
             # If current segment is too short, merge it with the next one
             segments[i+1] = cur + nxt
         else:
@@ -205,12 +206,12 @@ def label_segments_with_topics(segments, model_path):
     
     custom_stopwords = list(text.ENGLISH_STOP_WORDS.union({
         'know', 'going', 'thats', 'theres', 'sort', 'thing', 'get', 'got', 'let',
-        'actually', 'maybe', 'say', 'okay', 'please', 'course', 'like', 'see',
+        'actually', 'maybe', 'say', 'okay', 'please', 'like', 'see',
         'think', 'make', 'want', 'just', 'well', 'right'
     }))
     vectorizer_model = CountVectorizer(stop_words=custom_stopwords, min_df=2, ngram_range=(1, 2))
     # representation_model = KeyBERTInspired()
-    label_representation_model = OpenAI(openai, model="gpt-4o", chat=True)
+    label_representation_model = OpenAI(openai, model="gpt-4o-mini", chat=True)
     list_representation_model = KeyBERTInspired()
     
     representation_model = {
@@ -261,8 +262,92 @@ def label_segments_with_topics(segments, model_path):
             doc_idx += 1
     return results
 
+
+def determine_match_word_count(original_segments, min_words=5, max_words=20):
+    """
+    Determine an appropriate number of match words by finding the word count
+    of the shortest text segment in the original segments.
+    
+    Args:
+        original_segments: List of dicts with "text" keys.
+        min_words (int): Minimum fallback word count.
+        max_words (int): Maximum cap for match window.
+
+    Returns:
+        int: Suggested number of words to use for matching.
+    """
+    def word_count(text):
+        return len(re.findall(r'\w+', text))
+
+    shortest = min(word_count(seg["text"]) for seg in original_segments)
+
+    return max(min_words, min(shortest, max_words))
+
+
+def get_segment_bounds(original_segments, labeled_segments):
+    def clean(text):
+        return re.sub(r"\s+", " ", text.strip().lower())
+
+    match_words = determine_match_word_count(original_segments)
+    segment_bounds = []
+    current_segment_idx = 0
+
+    for idx, segment, label, topics in labeled_segments:
+        # Extract first few words from new segment
+        words = clean(" ".join(segment)).split()
+        match_snippet = " ".join(words[:match_words])
+
+        # Search for the original segment that best matches the beginning
+        for i in range(current_segment_idx, len(original_segments)):
+            orig_text = clean(original_segments[i]["text"])
+            if match_snippet in orig_text or orig_text.startswith(match_snippet[:20]):
+                # Found a match: update label + start attaching
+                # print(f"Match found for segment {i} with label '{label}'")
+                current_segment_idx = i
+                segment_bounds.append((idx, i, label, topics))
+                break
+            
+    return segment_bounds
+
+
+def align_w_timestamp(seg_bounds, original_segments):
+    """
+    Aligns segment bounds with original segments to include timestamps.
+    
+    Args:
+        seg_bounds (list): List of tuples with segment indices and labels.
+        original_segments (list): Original segments with timestamps.
+        
+    Returns:
+        list: Aligned segments with timestamps and labels.
+    """
+    aligned_segments = []
+    
+    for segment_idx, pos, label, topics in seg_bounds:
+        # use the position of next segment to determine the end time of current segment
+        # If this is the last segment, use the end of the last original segment
+        next_bound = seg_bounds[segment_idx + 1] if segment_idx + 1 < len(seg_bounds) else None
+        if next_bound:
+            next_pos = next_bound[1]
+            end = original_segments[next_pos - 1]["end"]
+        else:
+            next_pos = len(original_segments)
+            end = original_segments[-1]["end"]
+        
+        seg_texts = [original_segments[i] for i in range(pos, next_pos - 1) if i < len(original_segments)]
+        
+        aligned_segments.append({
+            "segment_idx": segment_idx,
+            "start": original_segments[pos]["start"],
+            "end": end,
+            "label": label,
+            "topics": topics,
+            "segments": seg_texts
+        })
+             
+    return aligned_segments
 # Full pipeline
-def process_transcript(file_path, output_path="segmented_transcript.txt"):
+def process_transcript(file_path, output_path="timestamped_segmented_transcript.txt"):
     if not os.path.exists(file_path):
         print(f"File not found: {file_path}")
         return
@@ -280,9 +365,9 @@ def process_transcript(file_path, output_path="segmented_transcript.txt"):
     # print(similarities)
     
     embeddings, model = get_embeddings(sentences, model_path)
-    segments = segment_by_similarity(sentences, embeddings, depth_threshold=0.7)
+    segments = segment_by_similarity(sentences, embeddings, depth_threshold=0.8, window_size=2)
     
-    merged_segments = merge_segments_by_topic(segments, model)
+    merged_segments = merge_segments_by_topic(segments, model, top_n=7, min_topics=2, min_seg_length=3)
     print(f"Initial segments: {len(segments)}, Merged segments: {len(merged_segments)}")
     # kw_model = KeyBERT(model)
     # seg_topics = get_top_topic_words(merged_segments[4], kw_model, top_n=10)
@@ -292,13 +377,29 @@ def process_transcript(file_path, output_path="segmented_transcript.txt"):
     
     labeled_segments = label_segments_with_topics(merged_segments, model_path=model_path)
 
-    # # print(f"\n🔢 Total tokens used: {total_tokens}\n")
+    # Align labels with original segments
+    seg_bounds = get_segment_bounds(transcript_json["segments"], labeled_segments)
+    
+    result = align_w_timestamp(seg_bounds, transcript_json["segments"])
+    # # print(f"\n Total tokens used: {total_tokens}\n")
     with open(output_path, "w") as f:
-        for i, segment, label, topics in labeled_segments:
-            f.write(f"\n=== Segment {i} ===\n")
-            f.write(f"Label: {label}\n")
-            f.write(f"Topics: {topics}\n")
-            f.write(" ".join(segment) + "\n")
+        # for segment_idx, i, label, topics in seg_bounds:
+        #     f.write(f"\n=== Segment {segment_idx} ===\n")
+        #     f.write(f"Position: {i}\n")
+        #     f.write(f"Label: {label}\n")
+        #     f.write(f"Topics: {', '.join(topics)}\n")
+        for segment in result:
+            f.write(f"\n=== Segment {segment['segment_idx']} ===\n")
+            f.write(f"Start: {segment['start']}\n")
+            f.write(f"End: {segment['end']}\n")
+            f.write(f"Label: {segment['label']}\n")
+            f.write(f"Topics: {', '.join(segment['topics'])}\n")
+    # with open(output_path, "w") as f:
+    #     for i, segment, label, topics in labeled_segments:
+    #         f.write(f"\n=== Segment {i} ===\n")
+    #         f.write(f"Label: {label}\n")
+    #         f.write(f"Topics: {topics}\n")
+    #         f.write(" ".join(segment) + "\n")
             
             
     # print(f"from {len(segments)} segments to {len(merged_segments)} merged segments to  {len(results)} labelled segments.")

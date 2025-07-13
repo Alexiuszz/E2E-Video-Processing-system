@@ -1,0 +1,108 @@
+
+=== Segment 0 ===
+Start: 0
+End: 185
+Label: Course structure overview
+Topics: homework, textbook, courses, chapters, homework problem, term project, problems, project, final, work
+
+=== Segment 1 ===
+Start: 185
+End: 217.1999969482422
+Label: Android project options
+Topics: android, android phone, camera, term project, phone, project, term, don, years, doing
+
+=== Segment 2 ===
+Start: 218
+End: 358.5199890136719
+Label: Course structure overview
+Topics: homework, textbook, courses, chapters, homework problem, term project, problems, project, final, work
+
+=== Segment 3 ===
+Start: 358.5199890136719
+End: 715.0999984741211
+Label: Physics-based Machine Vision
+Topics: understand image, textbook, courses, vision, learning, human vision, inverse graphics, 3d, geometry, environment
+
+=== Segment 4 ===
+Start: 715.0999984741211
+End: 778.0599975585938
+Label: Machine Learning Overview
+Topics: computational imaging, imaging, image formation, physics, computational, learning, computing, lenses, courses, physical apparatus
+
+=== Segment 5 ===
+Start: 778.0599975585938
+End: 956.1400146484375
+Label: Computational Imaging Techniques
+Topics: lenses, computational imaging, lens, imaging, machine vision, human vision, tomography, 3d picture, cameras, camera
+
+=== Segment 6 ===
+Start: 956.1400146484375
+End: 981.8599853515625
+Label: Understanding Optical Technology
+Topics: 3d, motion vision, optical mouse, vision, optical, vision problem, mouse, flat, motion, pretty
+
+=== Segment 7 ===
+Start: 981.8599853515625
+End: 1051.260009765625
+Label: Motion vision analysis
+Topics: motion vision, vision problem, distance, motion, vision, speed, time contact, cameras, physics, depth
+
+=== Segment 8 ===
+Start: 1051.260009765625
+End: 1568.1000061035156
+Label: Machine vision techniques
+Topics: machine vision, speed, vision, images, objects, systems, methods, humans, orientation, surface
+
+=== Segment 9 ===
+Start: 1568.1000061035156
+End: 3348.6000061035156
+Label: Camera Image Processing
+Topics: camera, surface orientation, focus, image plane, images, pixels, lens, surface, orientation, image
+
+=== Segment 10 ===
+Start: 3348.6000061035156
+End: 3497
+Label: 3D Coordinate Systems
+Topics: image plane, coordinate robot, camera, 3d, transformation, points image, axis, retina, upside, motion
+
+=== Segment 11 ===
+Start: 3497
+End: 3877.3599853515625
+Label: 3D Motion and Vectors
+Topics: 3d motion, 3d, using vectors, vectors, motion, vector, vector notation, unit vector, 2d, components
+
+=== Segment 13 ===
+Start: 3877.3599853515625
+End: 4303.080001831055
+Label: Brightness and Illumination
+Topics: illumination, brightness depends, brightness, column vectors, transpose, linear, vectors, energy, surface, talk brightness
+
+=== Segment 14 ===
+Start: 3945.040008544922
+End: 4439.960006713867
+Label: Light Reflection Dynamics
+Topics: solar, reflects light, reflectance, sun, illumination, brightness depends, light source, brightness measurement, light, brightness
+
+=== Segment 15 ===
+Start: 4303.080001831055
+End: 4566
+Label: Surface Orientation Constraints
+Topics: surface orientation, surface normal, orientation, surface, sphere, constraints, constraint, unit vector, angle, vector
+
+=== Segment 16 ===
+Start: 4439.960006713867
+End: 4704.6400146484375
+Label: Light behavior and geometry
+Topics: illumination, foreshortening, light sources, imaging, inversion, tilt surface, rays, surface, light, 3d
+
+=== Segment 17 ===
+Start: 4566
+End: 4784.799987792969
+Label: 3D to 2D mapping
+Topics: surface image, tilt surface, reflectance, surfaces, surface, 2d images, 3d, retina, tilt, 2d 2d
+
+=== Segment 18 ===
+Start: 4704.6400146484375
+End: 4784.799987792969
+Label: Tomography and Mathematics
+Topics: 2d 2d, tomography, 2d, contrast, inversion, view, colored, direction, complicated, room
