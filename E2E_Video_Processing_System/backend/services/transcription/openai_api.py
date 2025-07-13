@@ -12,7 +12,6 @@ import traceback
 
 
 load_dotenv()
-api_key = os.environ["API_KEY"]
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 

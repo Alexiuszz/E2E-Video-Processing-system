@@ -1,5 +1,5 @@
 import os
-from E2E_Video_Processing_System.backend.utils.text_processing import get_segment_bounds
+from utils.text_processing import get_segment_bounds
 import nltk
 from nltk.tokenize import sent_tokenize
 from sentence_transformers import SentenceTransformer
@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 load_dotenv()
 ApiKey = os.environ.get("API_KEY")
 
-nltk.download("punkt")
+nltk.download("punkt_tab")
 
 # --------- Configuration ---------
 model_path = os.environ.get("MODEL_PATH", "SentenceTransformer/all-MiniLM-L6-v2")
@@ -44,14 +44,16 @@ def extract_transcript(transcript, with_timestamps = True) -> str:
     """
     try:
         if with_timestamps:
-            transcript = " ".join([segment['text'].strip() for segment in transcript["segments"]])
+            texts = " ".join([segment['text'].strip() for segment in transcript["segments"]])
+            
         else:
-            transcript = transcript.strip()
+            transcript = transcript["text"].strip()
     except (KeyError, AttributeError, TypeError):
-        raise ValueError("Invalid transcript format. Expected raw text or a dictionary with 'segments'.")
+        segments = transcript["segments"]
+        raise ValueError(f"Invalid transcript format. Expected raw text or a dictionary with 'segments'\n {segments}.")
     
     # Use NLTK to split the transcript into sentences
-    return sent_tokenize(transcript)
+    return sent_tokenize(texts)
 
 
 # Encode using Sentence-BERT
@@ -71,7 +73,7 @@ def get_embeddings(sentences, model_path):
     if not sentences:
         raise ValueError("No sentences provided for embedding.")
     if len(sentences) < 60:
-        raise ValueError("At least 20 sentences are required for Segmentation.")
+        raise ValueError("At least 60 sentences are required for Segmentation.")
     model = SentenceTransformer(model_path)
     embeddings = model.encode(sentences, show_progress_bar=True)
     return embeddings, model
@@ -104,7 +106,7 @@ def segment_by_similarity(sentences, embeddings, depth_threshold=0.9,window_size
         segments.append(sentences[start:boundary])
         start = boundary
     segments.append(sentences[start:])
-    return segments, model
+    return segments
     
 # Extract top-N keywords using KeyBERT
 def get_top_topic_words(segment, kw_model, top_n=5):
@@ -252,7 +254,7 @@ def align_w_timestamp(seg_bounds, original_segments):
             "end": end,
             "label": label,
             "topics": topics,
-            "segments": seg_texts
+            # "segments": seg_texts
         })
              
     return aligned_segments
@@ -270,21 +272,26 @@ def process_transcript(transcript, with_timestamps = True):
     """
     sentences = extract_transcript(transcript, with_timestamps)
     
+    print(f"Extracted {len(sentences)} sentences from transcript.")
     if not sentences:
         return []
     
     # SBERT Sentence Embeddings
     embeddings, model = get_embeddings(sentences, model_path)
     
+    print(f"Generated embeddings for {len(sentences)} sentences.")
     # Segment by Similarity with Depth Scores
     segments = segment_by_similarity(sentences, embeddings, depth_threshold=0.8, window_size=2)
     
+    print(f"Segmented into {len(segments)} segments based on similarity.")
     # Merge close segments using KeyBERT
     segments = merge_segments_by_topic(segments, model, top_n=7, min_topics=2, min_seg_length=3)
     
+    print(f"Merged segments into {len(segments)} based on topic overlap.")
     #  Apply BERTopic with Enhanced Labels
     labeled_segments = label_segments_with_topics(segments, model_path=model_path)
     
+    print(f"Labeled segments with topics, total: {len(labeled_segments)}")
     # Get segment bounds with original segments if transcript has timestamps 
     if with_timestamps:
         seg_bounds = get_segment_bounds(transcript["segments"], labeled_segments)
