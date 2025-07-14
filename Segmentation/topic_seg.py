@@ -8,6 +8,8 @@ from sklearn.feature_extraction import text
 from sklearn.cluster import KMeans
 from bertopic.representation import KeyBERTInspired
 from bertopic.representation import OpenAI
+from bertopic.dimensionality import BaseDimensionalityReduction
+
 from umap import UMAP
 from sklearn.decomposition import PCA
 from hdbscan import HDBSCAN
@@ -98,8 +100,10 @@ def merge_segments_by_topic(segments, embedding_model, top_n=9, min_topics=2, mi
         cur_topics = get_top_topic_words(cur, kw_model, top_n=top_n)
         nxt_topics = get_top_topic_words(nxt, kw_model, top_n=top_n)
 
+        min_topics = min_topics if len(segments) > 10 else 3
+        
         if len(set(cur_topics) & set(nxt_topics)) >= min_topics:
-            segments[i-1] = cur + nxt  # merge
+            segments[i+1] = cur + nxt  # merge
         elif len(cur) < min_seg_length:
             # If current segment is too short, merge it with the next one
             segments[i+1] = cur + nxt
@@ -193,16 +197,27 @@ def label_segments_with_topics(segments, model_path):
     print("Encoding documents for topic modeling...")
     doc_embeddings = embedding_model.encode(docs, show_progress_bar=False)
 
-    umap_model = UMAP(n_components=5,       # Allow more clustering expressiveness
-        n_neighbors=5,       # Slightly tighter focus
-        min_dist=0.0,         # Allow tight clusters
-        random_state=42)
+    n_docs = len(docs)              # after filtering  len(docs) ≥ 1
+    print(f"Number of documents: {n_docs}")
+    n_comp = max(2, min(5, n_docs-1))   # 2 ≤ n_components ≤ n_docs-1
+
+
+    if len(docs) < 6:                 # or any threshold you like
+        umap_model = BaseDimensionalityReduction()   # no projection
+    else:
+        umap_model = UMAP(n_components=2, random_state=42)
     
     # umap_model = PCA(n_components=5, random_state=42)  # Use PCA for dimensionality reduction
-    
-    n_clusters = len(set(map(tuple, doc_embeddings)))  # Unique vectors only
-    # cluster_model = HDBSCAN(min_cluster_size=2, min_samples=1)
-    cluster_model = KMeans(n_clusters=max(2, min(n_clusters, len(segments) - 1)), random_state=42)
+    unique_embeddings = set(map(tuple, doc_embeddings))
+    n_clusters = len(unique_embeddings)
+
+    # Clamp to avoid invalid values
+    n_clusters = max(2, min(n_clusters, len(doc_embeddings) - 1))
+
+    cluster_model = KMeans(n_clusters=n_clusters, random_state=42)
+    # n_clusters = len(set(map(tuple, doc_embeddings)))  # Unique vectors only
+    # # cluster_model = HDBSCAN(min_cluster_size=2, min_samples=1)
+    # cluster_model = KMeans(n_clusters=max(2, min(n_clusters, len(segments) - 1)), random_state=42)
     
     custom_stopwords = list(text.ENGLISH_STOP_WORDS.union({
         'know', 'going', 'thats', 'theres', 'sort', 'thing', 'get', 'got', 'let',
@@ -221,7 +236,7 @@ def label_segments_with_topics(segments, model_path):
 
     topic_model = BERTopic(
         embedding_model=embedding_model,
-        # umap_model=umap_model,
+        umap_model=umap_model,
         hdbscan_model=cluster_model,
         vectorizer_model=vectorizer_model,
         representation_model=representation_model,

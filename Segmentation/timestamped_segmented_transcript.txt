@@ -2,26 +2,26 @@
 === Segment 0 ===
 Start: 0
 End: 185
-Label: Course Structure Overview
+Label: Course requirements overview
 Topics: homework problems, problems quizzes, homework, chapters, problems, homework problem, term project, quizzes, machine vision, machine
 
 === Segment 1 ===
 Start: 185
 End: 217.1999969482422
-Label: Android project development
+Label: Android project options
 Topics: android, android phone, camera, term project, phone, project, term, don, years, doing
 
 === Segment 2 ===
 Start: 218
-End: 358.5199890136719
-Label: Course project collaboration
+End: 277.7200012207031
+Label: Course assessment methods
 Topics: home quizzes, problems quizzes, quizzes, homework problems, textbook, courses, homework, home, starting, problems
 
 === Segment 3 ===
-Start: 358.5199890136719
+Start: 277.7200012207031
 End: 715.0800018310547
-Label: Physics-based Machine Vision
-Topics: understand image, textbook, courses, learning, vision, human vision, 3d, geometry, environment, description environment
+Label: Physics-based machine vision
+Topics: textbook, understand image, robot vision, reading, learning, vision, human vision, materials, machine vision, read
 
 === Segment 4 ===
 Start: 715.0800018310547
@@ -33,76 +33,76 @@ Topics: computational imaging, imaging, image formation, physics, computational,
 Start: 778.0599975585938
 End: 956.1400146484375
 Label: Computational Imaging Techniques
-Topics: lenses, computational imaging, lens, imaging, machine vision, human vision, tomography, 3d picture, cameras, camera
+Topics: lenses, computational imaging, lens, imaging, machine vision, human vision, tomography, 3d picture, cameras, vision
 
 === Segment 6 ===
 Start: 956.1400146484375
 End: 981.8599853515625
-Label: 3D vision and technology
-Topics: 3d, motion vision, optical mouse, vision, optical, vision problem, mouse, flat, motion, pretty
+Label: Understanding visual perception
+Topics: 3d, motion vision, optical mouse, vision, optical, vision problem, mouse, dimensional, flat, motion
 
 === Segment 7 ===
 Start: 981.8599853515625
 End: 1051.260009765625
-Label: Motion vision estimation
-Topics: motion vision, vision problem, distance, motion, vision, speed, time contact, cameras, physics, depth
+Label: Machine vision techniques
+Topics: motion vision, machine vision, vision problem, motion, vision, distance, speed, cameras, physics, objects
 
 === Segment 8 ===
 Start: 1051.260009765625
-End: 1568.1400146484375
-Label: Machine vision applications
-Topics: machine vision, speed, vision, images, objects, systems, methods, humans, orientation, surface
+End: 1218.159999847412
+Label: Machine vision techniques
+Topics: motion vision, machine vision, vision problem, motion, vision, distance, speed, cameras, physics, objects
 
 === Segment 9 ===
-Start: 1568.1400146484375
-End: 3348.6000061035156
-Label: Machine Vision Fundamentals
-Topics: camera, surface orientation, focus, image plane, images, lens, surface, orientation, image, graphics
+Start: 1218.159999847412
+End: 3279.3999938964844
+Label: Machine vision challenges
+Topics: machine vision, camera, vision, image plane, pixels, lens, surface orientation, images, projection, 3d
 
 === Segment 10 ===
-Start: 3348.6000061035156
+Start: 3279.3999938964844
 End: 3496.9200134277344
-Label: Coordinate systems and motion
-Topics: image plane, coordinate robot, camera, 3d, transformation, points image, axis, retina, upside, motion
+Label: Camera-centric Coordinates
+Topics: optical axis, axis lens, projection origin, center projection, image plane, projection, lens, optical, axis, coordinate
 
 === Segment 11 ===
 Start: 3496.9200134277344
 End: 3877.3599853515625
 Label: 3D Motion and Vectors
-Topics: 3d motion, 3d, motion, using vectors, vectors, vector, vector notation, components, unit vector, 2d
+Topics: 3d motion, 3d, motion, using vectors, vectors, vector, vector notation, robot vision, components, unit vector
 
 === Segment 13 ===
 Start: 3877.3599853515625
-End: 4303.080001831055
+End: 4276.519996643066
 Label: Brightness and Illumination
-Topics: illumination, brightness measurement, brightness, light, sun, surface, energy, talk brightness, angle, reflects
+Topics: illumination, brightness depends, brightness, column vectors, transpose, linear, vectors, energy, surface, materials
 
 === Segment 14 ===
-Start: 4184.47998046875
+Start: 3945.040008544922
 End: 4439.960006713867
-Label: Brightness and Illumination
-Topics: illumination, brightness measurement, brightness, light, sun, surface, energy, talk brightness, angle, reflects
+Label: Light and Surface Interactions
+Topics: solar, reflects light, reflectance, sun, illumination, light source, brightness depends, brightness measurement, light, brightness
 
 === Segment 15 ===
-Start: 4303.080001831055
+Start: 4276.519996643066
 End: 4566
-Label: Surface Orientation Geometry
-Topics: surface orientation, surface normal, orientation, surface, sphere, constraints, constraint, unit vector, angle, vector
+Label: Surface Orientation and Constraints
+Topics: surface orientation, orientation, perpendicular surface, surface normal, surface, constraints, sphere, define vector, vector, constraint
 
 === Segment 16 ===
 Start: 4439.960006713867
 End: 4704.6400146484375
-Label: Light and Imaging
-Topics: illumination, light sources, imaging, inversion, tilt surface, rays, surface, light, 3d, type surface
+Label: Light and geometry
+Topics: illumination, foreshortening, light sources, imaging, inversion, tilt surface, rays, surface, light, 3d
 
 === Segment 17 ===
 Start: 4566
 End: 4819.239990234375
-Label: 3D to 2D mapping
+Label: 2D to 3D Mapping
 Topics: surface image, tilt surface, reflectance, surfaces, surface, 2d images, 3d, retina, tilt, 2d 2d
 
 === Segment 18 ===
 Start: 4704.6400146484375
 End: 4819.239990234375
-Label: Tomography concepts and challenges
+Label: Tomography and visualization
 Topics: 2d 2d, tomography, 2d, contrast, inversion, view, colored, direction, complicated, room

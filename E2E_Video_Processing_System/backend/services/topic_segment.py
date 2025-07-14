@@ -8,6 +8,7 @@ from sklearn.feature_extraction import text
 from sklearn.cluster import KMeans
 from bertopic.representation import KeyBERTInspired
 from bertopic.representation import OpenAI
+from bertopic.dimensionality import BaseDimensionalityReduction
 from umap import UMAP
 from hdbscan import HDBSCAN
 import numpy as np
@@ -48,9 +49,9 @@ def extract_transcript(transcript, with_timestamps = True) -> str:
             
         else:
             transcript = transcript["text"].strip()
-    except (KeyError, AttributeError, TypeError):
+    except (KeyError, AttributeError, TypeError) as e:
         segments = transcript["segments"]
-        raise ValueError(f"Invalid transcript format. Expected raw text or a dictionary with 'segments'\n {segments}.")
+        raise ValueError(f"Invalid transcript format. Expected raw text or a dictionary with 'segments'\n {str(e)}.")
     
     # Use NLTK to split the transcript into sentences
     return sent_tokenize(texts)
@@ -136,6 +137,7 @@ def merge_segments_by_topic(segments, embedding_model, top_n=9, min_topics=2, mi
         cur_topics = get_top_topic_words(cur, kw_model, top_n=top_n)
         nxt_topics = get_top_topic_words(nxt, kw_model, top_n=top_n)
 
+        min_topics = min_topics if len(segments) > 10 else 3
         if len(set(cur_topics) & set(nxt_topics)) >= min_topics:
             segments[i-1] = cur + nxt  # merge
         elif len(cur) < min_seg_length:
@@ -169,10 +171,20 @@ def label_segments_with_topics(segments, model_path):
     doc_embeddings = embedding_model.encode(docs, show_progress_bar=False)
     
     # Unique vectors only
-    n_clusters = len(set(map(tuple, doc_embeddings)))  
+    unique_embeddings = set(map(tuple, doc_embeddings))
+    n_clusters = len(unique_embeddings)
+
+    # Clamp to avoid invalid values
+    n_clusters = max(2, min(n_clusters, len(doc_embeddings) - 1))
+
+    cluster_model = KMeans(n_clusters=n_clusters, random_state=42)
     
-    cluster_model = KMeans(n_clusters=max(2, min(n_clusters, len(segments) - 1)), random_state=42)
-    
+    # Use UMAP for dimensionality reduction if enough documents are available
+    if len(docs) < 6:   
+        umap_model = BaseDimensionalityReduction()   
+    else:
+        umap_model = UMAP(n_components=2, random_state=42)
+        
     custom_stopwords = list(text.ENGLISH_STOP_WORDS.union({
         'know', 'going', 'thats', 'theres', 'sort', 'thing', 'get', 'got', 'let',
         'actually', 'maybe', 'say', 'okay', 'please', 'course', 'like', 'see',
@@ -180,7 +192,7 @@ def label_segments_with_topics(segments, model_path):
     }))
     vectorizer_model = CountVectorizer(stop_words=custom_stopwords, min_df=2, ngram_range=(1, 2))
 
-    label_representation_model = OpenAI(openai, model="gpt-4o", chat=True)
+    label_representation_model = OpenAI(openai, model="gpt-4o-mini", chat=True)
     list_representation_model = KeyBERTInspired()
     
     representation_model = {
@@ -191,6 +203,7 @@ def label_segments_with_topics(segments, model_path):
     topic_model = BERTopic(
         embedding_model=embedding_model,
         hdbscan_model=cluster_model,
+        umap_model=umap_model,
         vectorizer_model=vectorizer_model,
         representation_model=representation_model,
         top_n_words=10
@@ -254,7 +267,7 @@ def align_w_timestamp(seg_bounds, original_segments):
             "end": end,
             "label": label,
             "topics": topics,
-            # "segments": seg_texts
+            "segments": seg_texts
         })
              
     return aligned_segments
