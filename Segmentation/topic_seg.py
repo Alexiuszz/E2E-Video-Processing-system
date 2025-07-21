@@ -362,6 +362,8 @@ def align_w_timestamp(seg_bounds, original_segments):
              
     return aligned_segments
 # Full pipeline
+# def process_transcript_eval(transcript):
+    
 def process_transcript(file_path, output_path="timestamped_segmented_transcript.txt"):
     if not os.path.exists(file_path):
         print(f"File not found: {file_path}")

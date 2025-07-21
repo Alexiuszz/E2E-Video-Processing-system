@@ -17,7 +17,12 @@ df = pd.read_csv(csv_file)  # Replace with your actual filename
 df.columns = df.columns.str.strip().str.replace(" ", "_").str.replace("(", "").str.replace(")", "")
 
 plt.figure(figsize=(12, 6))
-sns.barplot(data=df, x="model", y="exec_time_per_hr", hue="clean_type")
+barplot = sns.barplot(data=df, x="model", y="exec_time_per_hr", hue="clean_type")
+
+# Add labels on each bar
+for container in barplot.containers:
+    barplot.bar_label(container, fmt="%.1f", label_type="center", padding=3)
+    
 plt.title("Execution Time per Hour by Model and Clean Type")
 plt.ylabel("Execution Time (mins/hr of audio)")
 plt.xlabel("Model")
