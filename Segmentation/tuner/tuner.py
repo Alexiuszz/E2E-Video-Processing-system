@@ -6,7 +6,7 @@ from segeval import window_diff, pk as pk_metric   # alias to avoid name clash
 from sentence_transformers import SentenceTransformer
 
 sys.path.append(str(Path(__file__).resolve().parent.parent / 'AMI_evaluation'))
-from evaluation import (load_reference_segments,
+from datasets_ import (load_reference_segments,
                         masses_from_bounds, load_transcript)
 from services.topic_segment import process_transcript_optimize
 from dotenv import load_dotenv

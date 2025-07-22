@@ -328,4 +328,6 @@ def main():
 if __name__ == "__main__":
     main()
     
-    
+
+
+# python3 datasets_/ytseg_data_preparation.py --input_dir "/Users/admin/Desktop/Project Dataset/YTSEG_data" --output_dir "/Users/admin/Desktop/Project Dataset/YTSEG_data/cleaned"

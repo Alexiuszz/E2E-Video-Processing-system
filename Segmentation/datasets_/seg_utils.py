@@ -1,4 +1,5 @@
-
+import nltk
+from nltk.tokenize import word_tokenize
 def pred_boundaries(segments, sentence_offset=0):
     idx = sentence_offset
     bounds = []
@@ -36,3 +37,21 @@ def calculate_pred_word_bounds(pred_segments, all_words):
 
         pred_word_bounds.append(word_ptr)
     return pred_word_bounds
+
+def convert_predicted_segments_to_word_boundaries( pred_segments):
+        """
+        Convert predicted segments to word-level boundaries.
+        """
+        word_boundaries = []
+        word_count = 0
+        
+        for seg_idx, segment in enumerate(pred_segments):
+            if seg_idx > 0:  # Skip first segment
+                word_boundaries.append(word_count)
+            
+            # Count words in current segment
+            for sentence in segment:
+                sentence_words = word_tokenize(sentence)
+                word_count += len(sentence_words)
+        
+        return word_boundaries

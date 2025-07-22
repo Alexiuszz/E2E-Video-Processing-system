@@ -21,7 +21,7 @@ from services.topic_segment import process_transcript
 BASE_DIR = os.getenv('BASE_DIR', '.')
 YTSEG_DATA_DIR = os.path.join(BASE_DIR, 'YTSEG_data', "clean")
 
-class YTSegEvaluator:
+class YTSegDataLoader:
     def __init__(self, data_dir: str):
         self.data_dir = Path(data_dir)
     #     self.ensure_nltk_data()
@@ -120,8 +120,7 @@ class YTSegEvaluator:
         
         return word_boundaries
     
-    def convert_predicted_segments_to_word_boundaries(self, pred_segments: List[List[str]], 
-                                                    full_text: str) -> List[int]:
+    def convert_predicted_segments_to_word_boundaries(self, pred_segments: List[List[str]]) -> List[int]:
         """
         Convert predicted segments to word-level boundaries.
         """
@@ -303,23 +302,59 @@ class YTSegEvaluator:
         else:
             print("No valid scores computed!")
             return {}
+        
+    def extract_data(self, test_size: int = None):
+        data = self.load_ytseg_data()
+        
+        if test_size:
+            data = data[:test_size]
+            print(f"Evaluating on {len(data)} samples (test size limit).")
+        else:
+            print(f"Evaluating on {len(data)} samples.")
+            
+        meeting_data = []
+        for i, sample in enumerate(data):
+            if "text" in sample:
+                full_text = " ".join(sample["text"])
+                sentences = sent_tokenize(full_text)
+            elif "sentences" in sample:
+                sentences = " ".join(sample["sentences"])
+                full_text = " ".join(sentences)
+            else:
+                raise KeyError("No 'text' or 'sentences' field found")
+            if(len(sentences)> 60):
+                gold_sent_bounds = self.extract_gold_boundaries(sample)
+                gold_word_bounds = self.convert_sentence_to_word_boundaries(
+                    gold_sent_bounds, sentences)
 
-def main():
-    """Main evaluation function."""
-    # Initialize evaluator
-    evaluator = YTSegEvaluator(YTSEG_DATA_DIR)
+                if len(gold_word_bounds) > 0:
+                    meeting_data.append({
+                        "transcript": full_text,
+                        "all_words": [],
+                        "gold_word_bounds": gold_word_bounds,
+                    })
+                else:
+                    print(f"Skipping {sample}: No gold word bounds found.")
+                    continue
+            else:
+                print(f"Skipping {sample['id']}: Less than 60 sentences.")
+        return meeting_data
+# def main():
+#     """Main evaluation function."""
+#     # Initialize evaluator
+#     evaluator = YTSegEvaluator(YTSEG_DATA_DIR)
     
-    # Run evaluation
-    # For testing, limit to first 5 samples
-    results = evaluator.evaluate_dataset(limit=5)
+#     # Run evaluation
+#     # For testing, limit to first 5 samples
+#     results = evaluator.evaluate_dataset(limit=5)
     
-    # Save results to file
-    # if results:
-    #     results_file = Path(YTSEG_DATA_DIR) / "evaluation_results.json"
-    #     with open(results_file, 'w') as f:
-    #         json.dump(results, f, indent=2)
-    #     print(f"\nResults saved to {results_file}")
+#     # Save results to file
+#     # if results:
+#     #     results_file = Path(YTSEG_DATA_DIR) / "evaluation_results.json"
+#     #     with open(results_file, 'w') as f:
+#     #         json.dump(results, f, indent=2)
+#     #     print(f"\nResults saved to {results_file}")
 
-if __name__ == "__main__":
-    main()
+# # if __name__ == "__main__":
+# #     main()
     

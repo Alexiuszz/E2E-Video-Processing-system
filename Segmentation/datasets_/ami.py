@@ -13,12 +13,12 @@ from typing import List, Tuple
 from dotenv import load_dotenv
 load_dotenv()
 
-sys.path.append(str(Path(__file__).resolve().parent.parent.parent / 'E2E_Video_Processing_System' / 'backend'))
+# sys.path.append(str(Path(__file__).resolve().parent.parent.parent / 'E2E_Video_Processing_System' / 'backend'))
 
-from services.topic_segment import process_transcript
-from seg_utils import calculate_pred_word_bounds, masses_from_bounds
+# # from services.topic_segment import process_transcript
+# from seg_utils import calculate_pred_word_bounds, masses_from_bounds
 
-class AMIEvaluation:
+class AMIDataLoader:
     def __init__(self, base_dir: str):
         self.base_dir = base_dir
         self.ami_root = Path(base_dir) / 'ami_public_manual_1.6.2'
@@ -87,51 +87,88 @@ class AMIEvaluation:
                 gold_word_bounds.append(word_idx)
         return sorted(set(gold_word_bounds))
 
-    def evaluate(self, test_size: int = None):
+    # def evaluate(self, test_size: int = None):
+    #     """Evaluate topic segmentation on AMI meetings."""
+    #     topics_dir = self.ami_root / "topics"
+    #     topic_files = sorted(topics_dir.glob("*.topic.xml"))
+    #     meeting_ids = [p.stem.split(".")[0] for p in topic_files]
+    #     print(f"{len(meeting_ids)} meetings with topic annotations found.")
+
+    #     wd_scores = []
+    #     pk_scores = []
+        
+    #     if test_size:
+    #         meeting_ids = meeting_ids[:test_size]
+    #         print(f"Evaluating on {len(meeting_ids)} meetings (test size limit).")
+
+    #     for mid in meeting_ids:
+    #         transcript_text, all_words, wid2idx = self.load_transcript(mid)
+    #         n_words = len(all_words)
+    #         sentences = sent_tokenize(transcript_text)
+    #         print(f'  Number of sentences: {len(sentences)}')
+
+    #         topic_xml = topics_dir / f"{mid}.topic.xml"
+    #         gold_word_bounds = self.load_reference_segments(topic_xml, wid2idx)
+
+    #         formatted_transcript = {"text": transcript_text}
+            
+    #         pred_segments = process_transcript(formatted_transcript, with_timestamps=False, label=False, use_tiling=True, verbose=False)
+            
+    #         pred_word_bounds = calculate_pred_word_bounds(pred_segments, all_words)
+
+    #         ref_masses = masses_from_bounds(gold_word_bounds, n_words)
+    #         hyp_masses = masses_from_bounds(pred_word_bounds, n_words)
+
+    #         wd = window_diff(ref_masses, hyp_masses)
+    #         pk_score = pk(ref_masses, hyp_masses)
+    #         wd_scores.append(wd)
+    #         pk_scores.append(pk_score)
+
+            
+    #         print(f"{mid:8}  gold={len(gold_word_bounds):3}  pred={len(pred_word_bounds):3}  "
+    #               f"avg-gold-len={len(all_words)/(len(gold_word_bounds)+1):.1f}  "
+    #               f"avg-pred-len={len(all_words)/(len(pred_word_bounds)+1):.1f}")
+            
+            
+    #     print(f'Mean WindowDiff over {len(wd_scores)} meetings: {statistics.mean(wd_scores):.3f}')
+    #     print(f'Mean PK over {len(pk_scores)} meetings: {statistics.mean(pk_scores):.3f}')
+        
+    
+    def extract_data(self, test_size: int = None):
+        """Extract evaluation data on AMI meetings."""
         topics_dir = self.ami_root / "topics"
         topic_files = sorted(topics_dir.glob("*.topic.xml"))
         meeting_ids = [p.stem.split(".")[0] for p in topic_files]
         print(f"{len(meeting_ids)} meetings with topic annotations found.")
 
-        scores = []
-        pk_scores = []
+        meeting_data = []
         
         if test_size:
             meeting_ids = meeting_ids[:test_size]
             print(f"Evaluating on {len(meeting_ids)} meetings (test size limit).")
-
+        else:   
+            print("Evaluating on all available meetings.")
+            
         for mid in meeting_ids:
             transcript_text, all_words, wid2idx = self.load_transcript(mid)
-            n_words = len(all_words)
-            sentences = sent_tokenize(transcript_text)
-            print(f'  Number of sentences: {len(sentences)}')
 
             topic_xml = topics_dir / f"{mid}.topic.xml"
             gold_word_bounds = self.load_reference_segments(topic_xml, wid2idx)
 
-            formatted_transcript = {"text": transcript_text}
-            pred_segments = process_transcript(formatted_transcript, with_timestamps=False, label=False, use_tiling=True, verbose=False)
-            pred_word_bounds = calculate_pred_word_bounds(pred_segments, all_words)
-
-            ref_masses = masses_from_bounds(gold_word_bounds, n_words)
-            hyp_masses = masses_from_bounds(pred_word_bounds, n_words)
-
-            wd = window_diff(ref_masses, hyp_masses)
-            pk_score = pk(ref_masses, hyp_masses)
-            scores.append(wd)
-            pk_scores.append(pk_score)
-
-            print(f"{mid:8}  gold={len(gold_word_bounds):3}  pred={len(pred_word_bounds):3}  "
-                  f"avg-gold-len={len(all_words)/(len(gold_word_bounds)+1):.1f}  "
-                  f"avg-pred-len={len(all_words)/(len(pred_word_bounds)+1):.1f}")
+            
+            if len(gold_word_bounds) > 0:
+                meeting_data.append({
+                    "transcript": transcript_text,
+                    "all_words": all_words,
+                    "gold_word_bounds": gold_word_bounds,
+                })
+            else:
+                print(f"Skipping {mid}: No gold word bounds found.")
+                continue
+        return meeting_data
 
 
-
-        print(f'Mean WindowDiff over {len(scores)} meetings: {statistics.mean(scores):.3f}')
-        print(f'Mean PK over {len(pk_scores)} meetings: {statistics.mean(pk_scores):.3f}')
-
-
-if __name__ == "__main__":
-    BASE_DIR = os.getenv('BASE_DIR')
-    evaluator = AMIEvaluation(BASE_DIR)
-    evaluator.evaluate(5)
+# if __name__ == "__main__":
+#     BASE_DIR = os.getenv('BASE_DIR')
+#     evaluator = AMIEvaluation(BASE_DIR)
+#     evaluator.evaluate(5)

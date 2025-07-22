@@ -3,24 +3,24 @@ from pathlib import Path, PurePath
 from typing import List, Tuple, Dict, Set
 
 from lxml import etree
-from nltk.tokenize import word_tokenize
-from segeval import window_diff, pk   # pip install segeval
+# from nltk.tokenize import word_tokenize
+# from segeval import window_diff, pk   # pip install segeval
 
 # your codebase
-sys.path.append(str(Path(__file__).resolve().parent.parent.parent /
-                    'E2E_Video_Processing_System' / 'backend'))
-from services.topic_segment import process_transcript
-from seg_utils import calculate_pred_word_bounds, masses_from_bounds
+# sys.path.append(str(Path(__file__).resolve().parent.parent.parent /
+#                     'E2E_Video_Processing_System' / 'backend'))
+# from services.topic_segment import process_transcript
+# from seg_utils import calculate_pred_word_bounds, masses_from_bounds
 
 
-class ICSIEvaluation:
+class ICSIDataLoader:
     """
     Evaluate `process_transcript` on the ICSI Meeting Corpus
     using WindowDiff and Pk.
     """
     def __init__(self, base_dir: str):
         print(f"Using ICSI corpus at {base_dir}")
-        self.root = Path(base_dir).resolve().parent / 'ICSIPlus'
+        self.root = Path(base_dir) / 'ICSIPlus'
         self.words_dir = self.root / 'Words'
         self.segs_dir = self.root / 'Segments'
         self.topics_dir = self.root / 'Contributions' / 'TopicSegmentation'
@@ -158,41 +158,67 @@ class ICSIEvaluation:
         return sorted(gold)
     
     
-    def evaluate(self, limit: int = None):
-        mids = self.meeting_ids[:limit] if limit else self.meeting_ids
+    # def evaluate(self, test_size: int = None):
+    #     mids = self.meeting_ids[:test_size] if test_size else self.meeting_ids
+    #     print(f"Evaluating {len(mids)} ICSI meetings…")
+
+    #     wd_scores, pk_scores = [], []
+    #     for mid in mids:
+    #         transcript, words, wid2idx = self.load_transcript(mid)
+    #         word_starts = [w['start'] for w in words]
+
+    #         gold_bounds = self.load_reference_bounds(mid, wid2idx, word_starts)
+
+    #         # run your segmenter
+    #         formatted = {"text": transcript}
+    #         pred_segs = process_transcript(formatted, with_timestamps=False,
+    #                                        label=False, use_tiling=True, verbose=False)
+            
+    #         pred_bounds = calculate_pred_word_bounds(pred_segs, words)
+
+    #         n = len(words)
+    #         ref_mass = masses_from_bounds(gold_bounds, n)
+    #         hyp_mass = masses_from_bounds(pred_bounds, n)
+
+    #         wd = window_diff(ref_mass, hyp_mass)
+    #         pk_ = pk(ref_mass, hyp_mass)
+
+    #         wd_scores.append(wd)
+    #         pk_scores.append(pk_)
+
+    #         print(f"{mid:8}  gold={len(gold_bounds):3}  pred={len(pred_bounds):3} "
+    #               f"WD={wd:.3f}  Pk={pk_:.3f}")
+
+    #     print(f"\nMean WindowDiff: {statistics.mean(wd_scores):.3f}")
+    #     print(f"Mean Pk        : {statistics.mean(pk_scores):.3f}")
+        
+        
+        
+        
+    def extract_data(self, test_size: int = None):
+        mids = self.meeting_ids[:test_size] if test_size else self.meeting_ids
         print(f"Evaluating {len(mids)} ICSI meetings…")
 
-        wd_scores, pk_scores = [], []
+        meeting_data = []
         for mid in mids:
             transcript, words, wid2idx = self.load_transcript(mid)
             word_starts = [w['start'] for w in words]
 
             gold_bounds = self.load_reference_bounds(mid, wid2idx, word_starts)
 
-            # run your segmenter
-            formatted = {"text": transcript}
-            pred_segs = process_transcript(formatted, with_timestamps=False,
-                                           label=False, use_tiling=True, verbose=False)
-            
-            pred_bounds = calculate_pred_word_bounds(pred_segs, words)
-
-            n = len(words)
-            ref_mass = masses_from_bounds(gold_bounds, n)
-            hyp_mass = masses_from_bounds(pred_bounds, n)
-
-            wd = window_diff(ref_mass, hyp_mass)
-            pk_ = pk(ref_mass, hyp_mass)
-
-            wd_scores.append(wd)
-            pk_scores.append(pk_)
-
-            print(f"{mid:8}  gold={len(gold_bounds):3}  pred={len(pred_bounds):3} "
-                  f"WD={wd:.3f}  Pk={pk_:.3f}")
-
-        print(f"\nMean WindowDiff: {statistics.mean(wd_scores):.3f}")
-        print(f"Mean Pk        : {statistics.mean(pk_scores):.3f}")
+            if len(gold_bounds) > 0:
+                meeting_data.append({
+                    "transcript": transcript,
+                    "all_words": words,
+                    "gold_word_bounds": gold_bounds,
+                })
+            else:
+                print(f"Skipping {mid}: No gold word bounds found.")
+                continue
+        return meeting_data
 
 
-if __name__ == "__main__":
-    BASE_DIR = os.getenv("BASE_DIR")  # set to the root of your ICSI corpus
-    ICSIEvaluation(BASE_DIR).evaluate(limit=1)  # evaluate first 5 meetings
+
+# if __name__ == "__main__":
+#     BASE_DIR = os.getenv("BASE_DIR")  # set to the root of your ICSI corpus
+#     ICSIEvaluation(BASE_DIR).evaluate(test_size=1)  # evaluate first 5 meetings
