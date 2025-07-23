@@ -6,6 +6,8 @@ import  datasets_
 from segeval import window_diff, pk
 from nltk.tokenize import word_tokenize
 
+from baselines import bert_seg, baselines
+
 
 sys.path.append(str(Path(__file__).resolve().parent.parent /
                     'E2E_Video_Processing_System' / 'backend'))
@@ -33,15 +35,15 @@ num_samples = 0
 
 BASE_DIR = os.getenv("BASE_DIR")
 if args.dataset == "ami":
-    meeting_data = datasets_.AMIEvaluation(BASE_DIR).extract_data(
+    meeting_data = datasets_.AMIDataLoader(BASE_DIR).extract_data(
         test_size=args.test_size
     )
 elif args.dataset == "ytseg":
-    meeting_data = datasets_.YTSeg(os.path.join(BASE_DIR, 'YTSEG_data', "clean")).extract_data(
+    meeting_data = datasets_.YTSegDataLoader(os.path.join(BASE_DIR, 'YTSEG_data', "clean")).extract_data(
         test_size=args.test_size
     )
 elif args.dataset == "icsi":
-    meeting_data = datasets_.ICSIEvaluation(BASE_DIR).extract_data(
+    meeting_data = datasets_.ICSIDataLoader(BASE_DIR).extract_data(
         test_size=args.test_size
     )
 else:
@@ -64,10 +66,10 @@ for data in meeting_data:
             use_tiling=True,
             verbose=False
         )  
-    # elif args.model == "random":
-    #     pred_segments = baselines.random_segmentation(transcript_text)
-    # elif args.model == "bertseg":
-    #     pred_segments = baselines.bertseg_segmentation(transcript_text)
+    elif args.model == "random":
+        pred_segments = baselines.RandomSeg(transcript_text).segment()
+    elif args.model == "bertseg":
+        pred_segments = bert_seg.BertSeg(transcript_text).segment()
     elif args.model == "simple":
         pred_segments = process_transcript(
             transcript_text,
@@ -76,8 +78,8 @@ for data in meeting_data:
             use_tiling=False,
             verbose=False
         ) 
-    # elif args.model == "even":
-    #     pred_segments = baselines.even_segmentation(transcript_text)
+    elif args.model == "even":
+        pred_segments = baselines.EvenSeg(transcript_text).segment()
     
     else:
         raise ValueError(f"Unknown model: {args.model}")
@@ -95,6 +97,10 @@ for data in meeting_data:
     pk_score = pk(ref_masses, hyp_masses)
     wd_scores.append(wd)
     pk_scores.append(pk_score)
+    
+    print(f" gold={len(gold_word_bounds):3}  pred={len(pred_word_bounds):3}  "
+                  f"avg-gold-len={len(all_words)/(len(gold_word_bounds)+1):.1f}  "
+                  f"avg-pred-len={len(all_words)/(len(pred_word_bounds)+1):.1f}")
 
 
 # Calculate final metrics
