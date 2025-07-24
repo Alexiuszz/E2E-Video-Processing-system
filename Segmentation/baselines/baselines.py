@@ -34,7 +34,7 @@ class RandomSeg:
         return segments
     
 class EvenSeg:
-    def __init__(self, transcript, num_segments=15):
+    def __init__(self, transcript, num_segments=8):
         if "text" in transcript:
             full_text = transcript["text"].strip()
         else:

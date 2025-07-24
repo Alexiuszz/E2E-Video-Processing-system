@@ -86,7 +86,8 @@ for data in meeting_data:
     
     if args.dataset == "ytseg":
         pred_word_bounds = datasets_.convert_predicted_segments_to_word_boundaries(pred_segments)
-        n_words =  len(word_tokenize(transcript_text['text']))
+        all_words = word_tokenize(transcript_text['text'])
+        n_words =  len(all_words)
     else:
         pred_word_bounds = datasets_.calculate_pred_word_bounds(pred_segments, all_words)
 
