@@ -41,7 +41,7 @@ def extract_transcript(transcript, with_timestamps = True) -> str:
     Extracts the transcript text from the JSON format.
     
     Args:
-        transcript: str or dict: The transcript text or JSON object containing segments.
+        transcript:  dict: JSON object containing segments.
         with_timestamps (bool): Whether the input transcript has timestamps.
     Raises:
         ValueError: If the transcript format is invalid.        
@@ -160,7 +160,7 @@ def calculate_depth_scores(similarities: np.ndarray,
     return depths
 
 
-def tiled_segment(sentences: List[str], 
+def adaptive_seg(sentences: List[str], 
                  model,
                  wsize: int = 4,
                  top_p: float = 0.25,
@@ -374,7 +374,7 @@ def get_top_topic_words(segment, kw_model, top_n=5):
     keywords = kw_model.extract_keywords(doc,keyphrase_ngram_range=(1, 1), top_n=top_n, stop_words="english")
     return [kw for kw, _ in keywords]
 
-def merge_segments_by_topic(segments, embedding_model, top_n=9, min_topics=2, min_seg_length=3):
+def merge_segments_by_topic(segments, embedding_model, top_n=9, min_topics=2, min_seg_length=3, verbose=True):
     """
     Merges segments based on topic overlap using KeyBERT.
     Args:
@@ -399,9 +399,11 @@ def merge_segments_by_topic(segments, embedding_model, top_n=9, min_topics=2, mi
         min_topics = min_topics if len(segments) > 6 else 3
         if len(set(cur_topics) & set(nxt_topics)) >= min_topics:
             segments[i-1] = cur + nxt  # merge
-            print(f"Merging segments {i} and {i+1} with topics: {set(cur_topics) & set(nxt_topics)}")
+            if verbose:
+                print(f"Merging segments {i} and {i+1} with topics: {set(cur_topics) & set(nxt_topics)}")
         elif len(cur) < min_seg_length:
-            print(f"Segment {i} is too short ({len(cur)} words), merging with next segment.")
+            if verbose:
+                print(f"Segment {i} is too short ({len(cur)} words), merging with next segment.")
             # If current segment is too short, merge it with the next one
             segments[i+1] = cur + nxt
         else:
@@ -547,27 +549,31 @@ def process_transcript(transcript, with_timestamps = True, label = True, use_til
     sentences = extract_transcript(transcript, with_timestamps)
     
     print(f"Extracted {len(sentences)} sentences from transcript.")
-    if not sentences:
-        return []
     
+    if not sentences:
+        raise ValueError("No sentences provided for embedding.")
+    if len(sentences) < 60:
+        raise ValueError("At least 60 sentences are required for Segmentation.")
     # SBERT Sentence Embeddings
-    embeddings, model = get_embeddings(sentences, model=None, model_path=model_path, verbose=verbose)
+    # embeddings, model = get_embeddings(sentences, model=None, model_path=model_path, verbose=verbose)
+    model = SentenceTransformer(model_path)
     if verbose:
         print(f"Generated embeddings for {len(sentences)} sentences.")
         
     # Segment by Similarity with Depth Scores
-    if not use_tiling:
-        segments = segment_by_similarity(sentences, model, embeddings, depth_threshold=0.667, window_size=3)
-    else:
-        segments = tiled_segment(sentences, model, wsize=13, top_p=0.3, min_seg_words=20, stride=1, similarity_threshold=0.168, smoothing_factor=0.0127)
+    # if not use_tiling:
+    #     segments = segment_by_similarity(sentences, model, embeddings, depth_threshold=0.7, window_size=3)
+    #     segments = merge_segments_by_topic(segments, model, top_n=8, min_topics=3, min_seg_length=3, verbose=verbose)
+    # else:
+    #     segments = adaptive_seg(sentences, model, wsize=13, top_p=0.3, min_seg_words=20, stride=1, similarity_threshold=0.168, smoothing_factor=0.0127)
+    segments = adaptive_seg(sentences, model, wsize=13, top_p=0.3, min_seg_words=20, stride=1, similarity_threshold=0.168, smoothing_factor=0.0127)
     if verbose:
         print(f"Segmented into {len(segments)} segments based on similarity.")
+    
     # Merge close segments using KeyBERT
-    # segments = merge_segments_by_topic(segments, model, top_n=8, min_topics=3, min_seg_length=3)
+    segments = merge_segments_by_topic(segments, model, top_n=8, min_topics=4, min_seg_length=3)
     
     if label:
-        segments = merge_segments_by_topic(segments, model, top_n=6, min_topics=2, min_seg_length=3)
-        print(f"Merged segments into {len(segments)} based on topic overlap.")
         #  Apply BERTopic with Enhanced Labels
         labeled_segments = label_segments_with_topics(segments, model_path=model_path)
         
@@ -607,7 +613,7 @@ def process_transcript_optimize(transcript, model, wsize, top_p, min_seg_words, 
     # offload_folder="offload",
     # low_cpu_mem_usage=True
     #     ).to_empty(device="cpu") 
-    segments = tiled_segment(sentences, model, wsize=wsize, top_p=top_p, min_seg_words=min_seg_words, stride=stride,
+    segments = adaptive_seg(sentences, model, wsize=wsize, top_p=top_p, min_seg_words=min_seg_words, stride=stride,
                              similarity_threshold=similarity_threshold, smoothing_factor=smoothing_factor )
 
     # Merge close segments using KeyBERT
