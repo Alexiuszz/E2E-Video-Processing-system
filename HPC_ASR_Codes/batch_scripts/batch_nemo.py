@@ -30,22 +30,7 @@ def chunk_audio(audio_path, sr=16000, chunk_duration=30):
     chunk_samples = chunk_duration * sr
     return [audio[i:i + chunk_samples] for i in range(0, len(audio), chunk_samples)]
 
-# def transcribe_nemo_chunked(model, audio_path):
-#     chunks = chunk_audio(audio_path)
-#     transcripts = []
 
-#     for chunk in chunks:
-#         chunk_tensor = torch.tensor(chunk).unsqueeze(0).to("cuda")
-#         length_tensor = torch.tensor([chunk.shape[0]]).to("cuda")
-
-#         with torch.no_grad():
-#             features, lengths = model.preprocessor(input_signal=chunk_tensor, length=length_tensor)
-#             encoded, encoded_len = model.encoder(audio_signal=features, length=lengths)
-#             log_probs = model.decoder(encoder_output=encoded)
-#             predictions = model.decoding.ctc_decoder_predictions_tensor(log_probs)
-#             transcripts.append(predictions[0])
-
-#     return " ".join(transcripts)
 
 def transcribe_nemo_chunked(model, audio_path):
     chunks = chunk_audio(audio_path)

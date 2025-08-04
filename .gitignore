@@ -204,4 +204,4 @@ cython_debug/
 
 audio/
 uploads/
-.DS_Store
+*.DS_Store

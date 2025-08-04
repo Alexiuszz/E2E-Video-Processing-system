@@ -96,8 +96,8 @@ def enhance_all(input_csv, output_dir):
                 })
 
     pd.DataFrame(logs).to_csv(os.path.join(output_dir, "processing_log.csv"), index=False)
-    print("✅ Audio enhancement completed. Logs saved.")
+    print("Audio enhancement completed. Logs saved.")
 
 if __name__ == "__main__":
-    input_csv = os.path.join(datasets_dir, 'video_paths.csv')
-    enhance_all(input_csv, datasets_dir)
+    input_csv = os.path.join(BASE_DIR, 'video_paths.csv')
+    enhance_all(input_csv, BASE_DIR)

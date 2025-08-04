@@ -559,7 +559,7 @@ def process_transcript(transcript, with_timestamps = True, label = True, use_til
     if not use_tiling:
         segments = segment_by_similarity(sentences, model, embeddings, depth_threshold=0.667, window_size=3)
     else:
-        segments = tiled_segment(sentences, model, wsize=13, top_p=0.3, min_seg_words=15, stride=1, similarity_threshold=0.168, smoothing_factor=0.0127)
+        segments = tiled_segment(sentences, model, wsize=13, top_p=0.3, min_seg_words=20, stride=1, similarity_threshold=0.168, smoothing_factor=0.0127)
     if verbose:
         print(f"Segmented into {len(segments)} segments based on similarity.")
     # Merge close segments using KeyBERT

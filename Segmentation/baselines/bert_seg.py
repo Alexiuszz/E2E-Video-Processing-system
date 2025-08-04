@@ -26,7 +26,7 @@ class TopicSegmentationConfig(NamedTuple):
 
 
 class BertSeg:
-    """RoBERTa‑based TextTiling implementation that works on **raw transcripts**.
+    """Solbiati's RoBERTa‑based TextTiling implementation that works on **raw transcripts**.
 
     Parameters
     ----------
@@ -38,7 +38,7 @@ class BertSeg:
         Any HF Roberta‑family checkpoint – default "roberta‑base".
     """
 
-    def __init__(self, transcript: str, device: str = "cpu", model_name: str = "roberta-base") -> None:
+    def __init__(self, transcript: str, device: str = "mps", model_name: str = "roberta-base") -> None:
         self.sentences: List[str] = sent_tokenize(transcript['text'].strip())
         self.device = torch.device(device)
 
