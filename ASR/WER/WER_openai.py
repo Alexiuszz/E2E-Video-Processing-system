@@ -11,7 +11,7 @@ dotenv.load_dotenv()
 BASE_DIR = os.environ.get("BASE_DIR")  
 LOG_CSV = os.path.join(BASE_DIR, "WER_Openai.csv")
 
-AUDIO_SUFFIXES = ["openai"]
+AUDIO_SUFFIXES = ["noisy", "denoised_nr", "noisy_DeepFilterNet2", "denoised_vad"]
 
 MODELS = ["openai"]
 
@@ -37,6 +37,7 @@ def extract_folder_info(folder_name):
     return number, folder_name
 
 log_results = []
+
 def get_WER():
     all_folders = sorted([d for d in os.listdir(BASE_DIR) if os.path.isdir(os.path.join(BASE_DIR, d))])
     
@@ -51,7 +52,7 @@ def get_WER():
         
         for suffix in AUDIO_SUFFIXES:
             for model_name in MODELS:
-                hyp_file = os.path.join(folder_path, f"{folder}_{suffix}.txt")
+                hyp_file = os.path.join(folder_path, f"{folder}_{suffix}_openai.txt")
                 if not os.path.exists(hyp_file):
                     continue
 

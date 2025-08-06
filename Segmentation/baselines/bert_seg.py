@@ -14,7 +14,7 @@ class TextTilingHyperparameters(NamedTuple):
     SENTENCE_COMPARISON_WINDOW: int = 15
     SMOOTHING_PASSES: int = 2
     SMOOTHING_WINDOW: int = 1
-    TOPIC_CHANGE_THRESHOLD: float = 0.6
+    TOPIC_CHANGE_THRESHOLD: float = 0.3
 
 
 class TopicSegmentationConfig(NamedTuple):
@@ -30,7 +30,7 @@ class BertSeg:
 
     Parameters
     ----------
-    transcript : str
+    transcript : dict
         Entire meeting transcript as **one string**.
     device : str, optional
         Torch device ("cpu", "mps", "cuda") – default "cpu" for Mac‑M1.
@@ -84,16 +84,31 @@ class BertSeg:
     # Embedding helpers
     # ---------------------------------------------------------------------
     @torch.no_grad()
-    def _get_sentence_embeddings(self, sentences: List[str], layer: int = -2) -> List[torch.Tensor]:
-        """Average‑pool hidden states from the penultimate layer for each sentence."""
-        results: List[torch.Tensor] = []
-        for sent in sentences:
-            tokens = self.tokenizer(sent, return_tensors="pt", truncation=True).to(self.device)
+    def _get_sentence_embeddings(self, sentences: List[str], layer: int = -2, batch_size: int = 16) -> List[torch.Tensor]:
+        """Average‑pool hidden states from the penultimate layer for each sentence using batching."""
+        embeddings = []
+
+        for i in range(0, len(sentences), batch_size):
+            batch_sentences = sentences[i:i + batch_size]
+
+            tokens = self.tokenizer(
+                batch_sentences,
+                padding=True,
+                truncation=True,
+                return_tensors="pt"
+            ).to(self.device)
+
             output = self.model(**tokens, output_hidden_states=True)
-            hidden = output.hidden_states[layer]  # [1, seq, h]
-            pooled = hidden.mean(dim=1).squeeze(0)  # [h]
-            results.append(pooled.cpu())  # keep on CPU to save VRAM
-        return results
+            hidden_states = output.hidden_states[layer]  # shape: [batch, seq_len, hidden_dim]
+
+            # Average-pool across token dimension (dim=1) to get sentence embeddings
+            pooled = hidden_states.mean(dim=1)  # shape: [batch, hidden_dim]
+
+            # Store embeddings on same device (avoid .cpu())
+            embeddings.extend(pooled)  # list of [hidden_dim] tensors
+
+        return embeddings
+
 
     # ---------------------------------------------------------------------
     # TextTiling core

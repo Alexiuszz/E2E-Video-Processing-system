@@ -39,7 +39,7 @@ class AMIDataLoader:
             id_key = f"{{{nite_ns}}}id" if nite_ns else "id"   # prefer namespaced
 
             for w in tree.xpath("//w"):
-                wid = w.get(id_key) or w.get("id")           # <- works for both
+                wid = w.get(id_key) or w.get("id")           
                 txt = (w.text or "").strip()
                 punc = w.get("punc", "").strip()  # punctuation, if any
                 st, et = w.get("starttime"), w.get("endtime")

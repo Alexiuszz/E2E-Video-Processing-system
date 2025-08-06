@@ -8,6 +8,7 @@ import { LoaderCircleIcon } from "lucide-react";
 
 function App() {
   const [file, setFile] = useState<File | null>(null);
+  const [model, setModel] = useState<string>("openai");
   const [segments, setSegments] = useState<any[]>([]);
   const [transcript, setTranscript] = useState<string>("");
   const [processing, setProcessing] = useState<boolean>(false);
@@ -27,7 +28,7 @@ function App() {
       const filePath = uploadRes.data.file_path;
       setStep(() => 2);
       const transcribeRes = await api.post(
-        `/transcribe?file_path=${filePath}&model=openai`
+        `/transcribe?file_path=${filePath}&model=${model}`
       );
       setStep(() => 3);
       const fullTranscript =
@@ -43,6 +44,10 @@ function App() {
       setProcessing(false);
     } catch (err: any) {
         alert("Error: " + (err?.response?.data?.detail || err.message));
+        setProcessing(false);
+        setStep(0);
+        setSegments([]);
+        setTranscript("");
     }
   };
 
@@ -57,6 +62,18 @@ function App() {
     <div className="flex items-center flex-col max-w-2xl mx-auto p-6 space-y-4 min-h-svh min-w-[390px] w-screen">
       <h1 className=" font-bold">Video Processing System</h1>
       <FileUpload setFile={setFile} />
+      <div className="flex items-center space-x-4">
+        <label className="text-sm font-semibold">Model:</label>
+        <select
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+          className="border rounded px-2 py-1"
+        >
+          <option value="openai">OpenAI</option>
+          <option value="whisper">Whisper</option>
+          <option value="nemo">Nemo Parakeet</option>
+        </select>
+      </div>
       <button
         onClick={handleUploadAndProcess}
         disabled={!file}

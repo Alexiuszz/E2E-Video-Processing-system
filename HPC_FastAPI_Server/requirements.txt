@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+torch==2.1.2         
+librosa
+openai-whisper
+nemo_toolkit[asr]
+
+
+
+scipy
+soundfile

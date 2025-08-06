@@ -9,10 +9,6 @@ python3 main.py --model default  --dataset ami
 Valid samples: 139/139
 Mean WindowDiff: 0.433 (±0.072)
 Mean Pk: 0.392 (±0.069)
-=== FINAL RESULTS ===
-Valid samples: 139/139
-Mean WindowDiff: 0.442 (±0.078)
-Mean Pk: 0.401 (±0.076)
 
 python3 main.py --model default  --dataset ytseg 
 === FINAL RESULTS ===
@@ -22,21 +18,21 @@ Mean Pk: 0.462 (±0.108)
 
 python3 main.py --model bertseg  --dataset icsi 
 === FINAL RESULTS ===
-Valid samples: 70/70
-Mean WindowDiff: 0.567 (±0.146)
-Mean Pk: 0.495 (±0.162)
+Valid samples: 75/75
+Mean WindowDiff: 0.505 (±0.086)
+Mean Pk: 0.448 (±0.088)
 
 python3 main.py --model bertseg  --dataset ami
 === FINAL RESULTS ===
 Valid samples: 139/139
-Mean WindowDiff: 0.671 (±0.199)
-Mean Pk: 0.574 (±0.168)
+Mean WindowDiff: 0.539 (±0.138)
+Mean Pk: 0.466 (±0.116)
 
 python3 main.py --model bertseg  --dataset ytseg 
 === FINAL RESULTS ===
 Valid samples: 170/170
-Mean WindowDiff: 0.784 (±0.199)
-Mean Pk: 0.638 (±0.146)
+Mean WindowDiff: 0.747 (±0.194)
+Mean Pk: 0.615 (±0.137)
 
 python3 main.py --model random  --dataset ami
 === FINAL RESULTS ===
