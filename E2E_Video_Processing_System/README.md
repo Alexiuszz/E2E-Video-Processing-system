@@ -44,8 +44,8 @@ This project provides a complete pipeline for processing lecture recordings. It 
 1. Clone the repo:
 
 ```bash
-git clone https://github.com/your-org/lecture-pipeline.git
-cd /backend
+git clone https://github.com/Alexiuszz/E2E-Video-Processing-system.git
+cd E2E_Video_Processing_System/backend
 ```
 
 2. Create a virtual environment and install dependencies:
@@ -72,17 +72,23 @@ uvicorn main:app --reload --port 8000
 ```
 
 ### HPC Model Server
-
+This is a seperate server for local model transcription using a HPC.
 Used only for Whisper local and NeMo transcription (offloaded to GPU)
 
-1. Install Whisper and NeMo:
+1. Create a virtual environment and install dependencies:
+
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+2. Install Whisper and NeMo:
 
 ```bash
 pip install git+https://github.com/openai/whisper.git
 pip install nemo_toolkit['asr']
 ```
-
-2. Launch server:
+3. Launch server:
 
 ```bash
 uvicorn model_server:app --host 0.0.0.0 --port 8080
@@ -97,7 +103,7 @@ Make sure this port is accessible from the main API.
 1. Go to the frontend directory:
 
 ```bash
-cd ../frontend
+cd E2E_Video_Processing_System/frontend
 ```
 
 2. Install dependencies:
@@ -153,10 +159,10 @@ This runs the app at `http://localhost:5173` by default.
   ├── main.py                  # API entry point
   ├── routes/                  # /upload, /transcribe, /segment
   ├── services/                # transcription + topic segmentation
-  ├── utils/                   # helper functions (e.g., audio conversion)
+  ├── utils/                   # helper functions
 
 /frontend
-  ├── App.tsx                  # UI flow
+  ├── App.tsx                  # main app
   ├── components/              # FileUpload, Preview, Button, Progress
   ├── utils/api.ts             # Axios client
 ```
