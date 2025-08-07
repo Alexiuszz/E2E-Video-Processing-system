@@ -34,7 +34,6 @@ This project provides a complete pipeline for processing lecture recordings. It 
 - Node.js 18+
 - CUDA-compatible GPU (for local Whisper/NeMo)
 - FFmpeg
-- Docker (optional for containerisation)
 
 ---
 
@@ -46,7 +45,7 @@ This project provides a complete pipeline for processing lecture recordings. It 
 
 ```bash
 git clone https://github.com/your-org/lecture-pipeline.git
-cd lecture-pipeline/backend
+cd /backend
 ```
 
 2. Create a virtual environment and install dependencies:
