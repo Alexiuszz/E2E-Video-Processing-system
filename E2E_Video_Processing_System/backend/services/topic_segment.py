@@ -1,3 +1,4 @@
+#Topic Segmentation Algorithm
 import os
 from utils.text_processing import get_segment_bounds
 import nltk
