@@ -172,8 +172,3 @@ This runs the app at `http://localhost:5173` by default.
 
 ---
 
-## Acknowledgements
-
-- [OpenAI Whisper](https://github.com/openai/whisper)
-- [NVIDIA NeMo](https://developer.nvidia.com/nemo)
-
