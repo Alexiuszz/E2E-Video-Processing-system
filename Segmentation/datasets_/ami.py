@@ -36,12 +36,12 @@ class AMIDataLoader:
             tree = etree.parse(xp)
 
             nite_ns = tree.getroot().nsmap.get('nite')
-            id_key = f"{{{nite_ns}}}id" if nite_ns else "id"   # prefer namespaced
+            id_key = f"{{{nite_ns}}}id" if nite_ns else "id"   
 
             for w in tree.xpath("//w"):
                 wid = w.get(id_key) or w.get("id")           
                 txt = (w.text or "").strip()
-                punc = w.get("punc", "").strip()  # punctuation, if any
+                punc = w.get("punc", "").strip()  
                 st, et = w.get("starttime"), w.get("endtime")
 
                 if not wid or not txt or not st or not et:
@@ -70,7 +70,7 @@ class AMIDataLoader:
     def load_reference_segments(self, xml_path: Path, wid2idx: dict) -> List[int]:
         """Extract topic boundaries from an AMI *.topic.xml file."""
         tree = etree.parse(str(xml_path))
-        topics = tree.xpath('//*[local-name()="topic"]')  # ignore namespace
+        topics = tree.xpath('//*[local-name()="topic"]') 
 
         gold_word_bounds = []
         for tp in topics:

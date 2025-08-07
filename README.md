@@ -112,6 +112,7 @@ Baseline comparison models include:
 - Even segmentation
 - [Solbiati et al.](https://arxiv.org/abs/2106.12978) (unsupervised segmentation)
 
+The topic segmentation algorithm can be found at: [topic_segment.py](https://github.com/Alexiuszz/E2E-Video-Processing-system/blob/main/E2E_Video_Processing_System/backend/services/topic_segment.py)
 To begin:
 
 ```bash

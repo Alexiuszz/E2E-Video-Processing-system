@@ -18,10 +18,8 @@ class RandomSeg:
         current_segment = []
         np.random.seed(42)
         for sentence in self.sentences:
-            # Randomly decide whether to start a new segment or continue the current one with seed 42
-              # Set seed for reproducibility
+            
             if np.random.rand() < random_threshold:
-                # Check if there is a current segment to append before finishing segmentation
                 if current_segment:
                     segments.append(current_segment)
                 current_segment = [sentence]

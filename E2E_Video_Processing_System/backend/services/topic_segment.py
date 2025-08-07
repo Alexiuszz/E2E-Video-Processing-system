@@ -560,12 +560,6 @@ def process_transcript(transcript, with_timestamps = True, label = True, use_til
     if verbose:
         print(f"Generated embeddings for {len(sentences)} sentences.")
         
-    # Segment by Similarity with Depth Scores
-    # if not use_tiling:
-    #     segments = segment_by_similarity(sentences, model, embeddings, depth_threshold=0.7, window_size=3)
-    #     segments = merge_segments_by_topic(segments, model, top_n=8, min_topics=3, min_seg_length=3, verbose=verbose)
-    # else:
-    #     segments = adaptive_seg(sentences, model, wsize=13, top_p=0.3, min_seg_words=20, stride=1, similarity_threshold=0.168, smoothing_factor=0.0127)
     segments = adaptive_seg(sentences, model, wsize=13, top_p=0.3, min_seg_words=20, stride=1, similarity_threshold=0.168, smoothing_factor=0.0127)
     if verbose:
         print(f"Segmented into {len(segments)} segments based on similarity.")
@@ -592,75 +586,75 @@ def process_transcript(transcript, with_timestamps = True, label = True, use_til
     return result
 
 
-def process_transcript_optimize(transcript, model, wsize, top_p, min_seg_words, stride=1, similarity_threshold=0.3, smoothing_factor=0.1):
-    """
-    Processes the transcript to extract sentences and perform topic segmentation.
+# def process_transcript_optimize(transcript, model, wsize, top_p, min_seg_words, stride=1, similarity_threshold=0.3, smoothing_factor=0.1):
+#     """
+#     Processes the transcript to extract sentences and perform topic segmentation.
     
-    Args:
-        transcript (str or dict): The transcript text or JSON object containing segments.
-        with_timestamps (bool): Whether input transcript has timestamps.
+#     Args:
+#         transcript (str or dict): The transcript text or JSON object containing segments.
+#         with_timestamps (bool): Whether input transcript has timestamps.
         
-    Returns:
-        list: A list of processed sentences or segments.
-    """
-    sentences = extract_transcript(transcript, False)
-    if not sentences:
-        return []
+#     Returns:
+#         list: A list of processed sentences or segments.
+#     """
+#     sentences = extract_transcript(transcript, False)
+#     if not sentences:
+#         return []
     
-    # model = AutoModel.from_pretrained(
-    # "sentence-transformers/all-MiniLM-L6-v2",
-    # device_map="cpu",
-    # offload_folder="offload",
-    # low_cpu_mem_usage=True
-    #     ).to_empty(device="cpu") 
-    segments = adaptive_seg(sentences, model, wsize=wsize, top_p=top_p, min_seg_words=min_seg_words, stride=stride,
-                             similarity_threshold=similarity_threshold, smoothing_factor=smoothing_factor )
+#     # model = AutoModel.from_pretrained(
+#     # "sentence-transformers/all-MiniLM-L6-v2",
+#     # device_map="cpu",
+#     # offload_folder="offload",
+#     # low_cpu_mem_usage=True
+#     #     ).to_empty(device="cpu") 
+#     segments = adaptive_seg(sentences, model, wsize=wsize, top_p=top_p, min_seg_words=min_seg_words, stride=stride,
+#                              similarity_threshold=similarity_threshold, smoothing_factor=smoothing_factor )
 
-    # Merge close segments using KeyBERT
-    # segments = merge_segments_by_topic(segments, model, top_n=8, min_topics=3, min_seg_length=3)
+#     # Merge close segments using KeyBERT
+#     # segments = merge_segments_by_topic(segments, model, top_n=8, min_topics=3, min_seg_length=3)
 
 
-    result = segments
+#     result = segments
     
-    return result
+#     return result
 
-def process_transcript_optimize2(transcript, model, depth_threshold=0.73, window_size=9, top_n=8, min_topics=3):
-    """
-    Processes the transcript to extract sentences and perform topic segmentation.
+# def process_transcript_optimize2(transcript, model, depth_threshold=0.73, window_size=9, top_n=8, min_topics=3):
+#     """
+#     Processes the transcript to extract sentences and perform topic segmentation.
     
-    Args:
-        transcript (str or dict): The transcript text or JSON object containing segments.
-        with_timestamps (bool): Whether input transcript has timestamps.
+#     Args:
+#         transcript (str or dict): The transcript text or JSON object containing segments.
+#         with_timestamps (bool): Whether input transcript has timestamps.
         
-    Returns:
-        list: A list of processed sentences or segments.
-    """
-    sentences = extract_transcript(transcript, False)
-    if not sentences:
-        return []
+#     Returns:
+#         list: A list of processed sentences or segments.
+#     """
+#     sentences = extract_transcript(transcript, False)
+#     if not sentences:
+#         return []
     
     
-    embeddings, model = get_embeddings(sentences, model, model_path=None, verbose=False)
-    segments = segment_by_similarity(sentences, model, embeddings=embeddings, depth_threshold=depth_threshold, window_size=window_size)
+#     embeddings, model = get_embeddings(sentences, model, model_path=None, verbose=False)
+#     segments = segment_by_similarity(sentences, model, embeddings=embeddings, depth_threshold=depth_threshold, window_size=window_size)
 
-    # Merge close segments using KeyBERT
-    segments = merge_segments_by_topic(segments, model, top_n=top_n, min_topics=min_topics, min_seg_length=3)
+#     # Merge close segments using KeyBERT
+#     segments = merge_segments_by_topic(segments, model, top_n=top_n, min_topics=min_topics, min_seg_length=3)
 
 
-    result = segments
+#     result = segments
     
-    return result
+#     return result
 
-# Mean WindowDiff over 10 meetings: 0.456
-# Mean PK over 10 meetings: 0.419
+# # Mean WindowDiff over 10 meetings: 0.456
+# # Mean PK over 10 meetings: 0.419
 
-# Best WD : 0.45273082900926154
-# Best Pk : 0.4226692655452105
-# Params  : {'depth_t': 0.6678651787342368, 
-# 'window_size': 3, 'top_n': 9, 'min_topics': 3}
+# # Best WD : 0.45273082900926154
+# # Best Pk : 0.4226692655452105
+# # Params  : {'depth_t': 0.6678651787342368, 
+# # 'window_size': 3, 'top_n': 9, 'min_topics': 3}
 
-#Tiling
-# Mean WindowDiff over 5 meetings: 0.392
-# Mean PK over 5 meetings: 0.350
-# Mean WindowDiff over 10 meetings: 0.423
-# Mean PK over 10 meetings: 0.374
+# #Tiling
+# # Mean WindowDiff over 5 meetings: 0.392
+# # Mean PK over 5 meetings: 0.350
+# # Mean WindowDiff over 10 meetings: 0.423
+# # Mean PK over 10 meetings: 0.374

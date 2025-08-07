@@ -30,21 +30,16 @@ def chunk_audio(audio_path, sr=16000, chunk_duration=30):
     chunk_samples = chunk_duration * sr
     return [audio[i:i + chunk_samples] for i in range(0, len(audio), chunk_samples)]
 
-
-
 def transcribe_nemo_chunked(model, audio_path):
     chunks = chunk_audio(audio_path)
     transcripts = []
-
     for chunk in chunks:
         text_or_hyp = model.transcribe([chunk], return_hypotheses=False)[0]
         print(f"chunk: {text_or_hyp}")
-        # If still returns Hypothesis, extract .text safely
         if hasattr(text_or_hyp, 'text'):
             transcripts.append(text_or_hyp.text)
         else:
             transcripts.append(str(text_or_hyp))
-
     return " ".join(transcripts)
 
 def main():

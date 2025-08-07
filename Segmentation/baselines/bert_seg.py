@@ -27,15 +27,6 @@ class TopicSegmentationConfig(NamedTuple):
 
 class BertSeg:
     """Solbiati's RoBERTa‑based TextTiling implementation that works on **raw transcripts**.
-
-    Parameters
-    ----------
-    transcript : dict
-        Entire meeting transcript as **one string**.
-    device : str, optional
-        Torch device ("cpu", "mps", "cuda") – default "cpu" for Mac‑M1.
-    model_name : str, optional
-        Any HF Roberta‑family checkpoint – default "roberta‑base".
     """
 
     def __init__(self, transcript: str, device: str = "mps", model_name: str = "roberta-base") -> None:
@@ -46,19 +37,17 @@ class BertSeg:
         self.model: RobertaModel = RobertaModel.from_pretrained(model_name).to(self.device)
         self.model.eval()
 
-    # ---------------------------------------------------------------------
-    # Public API
-    # ---------------------------------------------------------------------
+
     def segment(
         self,
         config: TopicSegmentationConfig = TopicSegmentationConfig(),
     ) -> List[List[str]]:
-        """Return **segments** (list‑of‑list of sentences), *not* raw boundaries."""
+        """Return **segments** (list‑of‑list of sentences), not raw boundaries."""
 
-        # 1. Sentence embeddings ------------------------------------------------
-        embeddings = self._get_sentence_embeddings(self.sentences)  # [n, 768] tensors
+       
+        embeddings = self._get_sentence_embeddings(self.sentences)  
 
-        # 2. TextTiling steps ---------------------------------------------------
+
         tt = config.TEXT_TILING or TextTilingHyperparameters()
 
         comp_scores = self.block_comparison_score(embeddings, k=tt.SENTENCE_COMPARISON_WINDOW)
@@ -66,22 +55,23 @@ class BertSeg:
         depth_scores = self.depth_score(comp_scores)
         boundaries = self.depth_score_to_topic_change_indexes(
             depth_scores,
-            meeting_duration=len(self.sentences),  # duration measured in sentences
+            meeting_duration=len(self.sentences),  
             topic_segmentation_configs=config,
         )
         boundaries = sorted(boundaries)
 
-        # 3. Convert boundary indices → list‑of‑segments -------------------------
         segments: List[List[str]] = []
         prev = 0
         for b in boundaries:
-            segments.append(self.sentences[prev : b + 1])  # include boundary sentence
+            segments.append(self.sentences[prev : b + 1])  
             prev = b + 1
-        segments.append(self.sentences[prev:])  # tail
+        segments.append(self.sentences[prev:]) 
         return segments
 
     # ---------------------------------------------------------------------
-    # Embedding helpers
+    # Most of the rest of this code is lifted from the author's original implementation
+    # available at https://github.com/gdamaskinos/unsupervised_topic_segmentation/tree/main.
+    # Adjusted to work with raw transcripts.
     # ---------------------------------------------------------------------
     @torch.no_grad()
     def _get_sentence_embeddings(self, sentences: List[str], layer: int = -2, batch_size: int = 16) -> List[torch.Tensor]:
@@ -99,20 +89,16 @@ class BertSeg:
             ).to(self.device)
 
             output = self.model(**tokens, output_hidden_states=True)
-            hidden_states = output.hidden_states[layer]  # shape: [batch, seq_len, hidden_dim]
+            hidden_states = output.hidden_states[layer]  
 
-            # Average-pool across token dimension (dim=1) to get sentence embeddings
-            pooled = hidden_states.mean(dim=1)  # shape: [batch, hidden_dim]
+            pooled = hidden_states.mean(dim=1)  
 
-            # Store embeddings on same device (avoid .cpu())
-            embeddings.extend(pooled)  # list of [hidden_dim] tensors
+            embeddings.extend(pooled)  
 
         return embeddings
 
 
-    # ---------------------------------------------------------------------
-    # TextTiling core
-    # ---------------------------------------------------------------------
+   
     @staticmethod
     def smooth(timeseries: List[float], n: int, s: int) -> List[float]:
         """n iterative passes of simple moving‑average with window radius *s*."""
@@ -137,10 +123,10 @@ class BertSeg:
         scores: List[float] = []
         for i in range(1, len(timeseries) - 1):
             left, right = i - 1, i + 1
-            # ascend until peak on the left
+           
             while left > 0 and timeseries[left - 1] > timeseries[left]:
                 left -= 1
-            # ascend until peak on the right
+
             while right < len(timeseries) - 1 and timeseries[right + 1] > timeseries[right]:
                 right += 1
             scores.append((timeseries[right] - timeseries[i]) + (timeseries[left] - timeseries[i]))
@@ -152,7 +138,7 @@ class BertSeg:
         return float(sim.item())
 
     def _window_mean(self, timeseries: List[torch.Tensor], start: int, end: int) -> torch.Tensor:
-        # [window, h] → mean → [h]
+
         stack = torch.stack(timeseries[start:end]).to(self.device)
         return stack.mean(dim=0)
 
@@ -165,9 +151,6 @@ class BertSeg:
             res.append(self._sent_sim(w1, w2))
         return res
 
-    # ---------------------------------------------------------------------
-    # Depth‑to‑boundary logic (capped version optional)
-    # ---------------------------------------------------------------------
     def depth_score_to_topic_change_indexes(
         self,
         depth_scores: List[float],
@@ -189,23 +172,19 @@ class BertSeg:
             return []
 
         if capped:
-            # Sort by depth score desc
+
             vals_np, idxs_np = self._arsort_two(vals, idxs)
-            # prune below threshold
             keep = [v > threshold for v in vals_np]
             vals_np = vals_np[keep]
             idxs_np = idxs_np[keep]
             max_segments = int(meeting_duration / avg_seg_len)
             idxs_np = idxs_np[:max_segments]
-            # back to chrono order
+
             idxs_np, _ = self._arsort_two(idxs_np, vals_np)
             return list(idxs_np)
         else:
             return [i for i, v in zip(idxs, vals) if v > threshold]
 
-    # ---------------------------------------------------------------------
-    # Utilities
-    # ---------------------------------------------------------------------
     @staticmethod
     def _arsort_two(arr1, arr2):
         x = np.array(arr1)

@@ -38,6 +38,7 @@ class YTSegDataPreparator:
         
         # Convert each character to integer
         return [int(digit) for digit in binary_part]
+
     
     def convert_wiki727k_format(self, input_file: str) -> List[Dict[str, Any]]:
         """
@@ -145,92 +146,6 @@ class YTSegDataPreparator:
         
         return standardized_data
     
-    def convert_ytseg_original_format(self, input_file: str) -> List[Dict[str, Any]]:
-        """
-        Convert original YTSeg format to standardized format.
-        This is a placeholder - adjust based on actual YTSeg format.
-        """
-        standardized_data = []
-        
-        with open(input_file, 'r', encoding='utf-8') as f:
-            if input_file.endswith('.jsonl'):
-                # JSONL format
-                for line in f:
-                    if line.strip():
-                        sample = json.loads(line)
-                        standardized_data.append(self._process_ytseg_sample(sample))
-            else:
-                # JSON format
-                data = json.load(f)
-                if isinstance(data, list):
-                    for sample in data:
-                        standardized_data.append(self._process_ytseg_sample(sample))
-                else:
-                    standardized_data.append(self._process_ytseg_sample(data))
-        
-        return standardized_data
-    
-    def _process_ytseg_sample(self, sample: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Process a single YTSeg sample to standardized format.
-        Adjust this method based on actual YTSeg format.
-        """
-        # Example processing - adjust based on actual format
-        video_id = sample.get("video_id", sample.get("id", "unknown"))
-        
-        # Get transcript text
-        if "transcript" in sample:
-            text = sample["transcript"]
-        elif "text" in sample:
-            text = sample["text"]
-        else:
-            # If sentences are provided separately
-            sentences = sample.get("sentences", [])
-            text = " ".join(sentences)
-        
-        # Tokenize if not already done
-        if "sentences" not in sample:
-            sentences = sent_tokenize(text)
-        else:
-            sentences = sample["sentences"]
-        
-        # Process segments/chapters
-        segments = []
-        if "segments" in sample:
-            segments = sample["segments"]
-        elif "chapters" in sample:
-            # Convert chapters to segments
-            for i, chapter in enumerate(sample["chapters"]):
-                start_time = chapter.get("start_time", 0)
-                end_time = chapter.get("end_time", 0)
-                title = chapter.get("title", f"Chapter {i+1}")
-                
-                # Convert time-based to sentence-based (simplified)
-                # This would need more sophisticated alignment in practice
-                start_sent = int(start_time / 10)  # Rough approximation
-                end_sent = int(end_time / 10)
-                
-                segments.append({
-                    "start_sentence": start_sent,
-                    "end_sentence": end_sent,
-                    "topic": title
-                })
-        
-        # Ensure segments are valid
-        if not segments:
-            # Create a single segment for the entire text
-            segments = [{
-                "start_sentence": 0,
-                "end_sentence": len(sentences) - 1,
-                "topic": "single_segment"
-            }]
-        
-        return {
-            "id": video_id,
-            "text": text,
-            "sentences": sentences,
-            "segments": segments
-        }
     
     def prepare_dataset(self, input_format: str = "auto") -> None:
         """
@@ -308,7 +223,7 @@ class YTSegDataPreparator:
         elif "video_id" in sample or "transcript" in sample:
             return "ytseg"
         else:
-            return "ytseg"  # Default to YTSeg format
+            return "ytseg"  
 
 def main():
     """Main preparation function."""

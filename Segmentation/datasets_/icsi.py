@@ -31,15 +31,9 @@ class ICSIDataLoader:
         return [o.get('name') for o in meta.xpath('//observation')]
     
 
-   #  Put this method inside the ICSIEvaluation class
+
     def load_transcript(self, mid: str):
-        """
-        Build:
-        • transcript_text  – detokenised string (AMI spacing rules)
-        • all_words        – one dict per *logical* word, incl. start/end
-        • wid2idx          – maps every original nite:id (even the inner
-                            parts of “I’ve”) to the index of its word
-        """
+
         xml_paths = glob.glob(str(self.words_dir / f"{mid}.*.words.xml"))
         if not xml_paths:
             raise FileNotFoundError(f"No words XML for meeting {mid}")
@@ -47,24 +41,23 @@ class ICSIDataLoader:
         PUNC_CHARS = {".", ",", "?", "!", ";", ":"}
 
         all_words, wid2idx, transcript_parts = [], {}, []
-        current = None            # rolling buffer for a multi-token word
+        current = None            
 
         for xp in xml_paths:
             tree = etree.parse(xp)
             ns   = tree.getroot().nsmap.get('nite')
             idkey = f"{{{ns}}}id" if ns else "id"
-            spk   = PurePath(xp).stem.split(".")[1]      # channel letter
+            spk   = PurePath(xp).stem.split(".")[1]      
 
             for w in tree.xpath('//w'):
                 wid  = w.get(idkey)
                 txt  = (w.text or '').strip()
                 st, et = w.get('starttime'), w.get('endtime')
 
-                # 1) if this token STARTS a word …
+                
                 if st:
-                    # -- close any previous unfinished word (shouldn't happen)
                     if current:
-                        current["end"] = current["start"]   # dummy end
+                        current["end"] = current["start"]   
                         all_words.append(current)
 
                     current = {
@@ -76,29 +69,27 @@ class ICSIDataLoader:
                         "wids": [wid],
                     }
 
-                # 2) continuation of the current word
                 else:
-                    if current is None:           # safety guard
+                    if current is None:          
                         continue
-                    current["text"] += txt       # concatenate literally
+                    current["text"] += txt       
                     current["wids"].append(wid)
 
-                # 3) does this token FINISH the word?
+                
                 if et:
                     if current is None:
                         continue
                     current["end"] = float(et)
-                    # any single-character punctuation token whose start & end
-                    # are the same is treated as punctuation
+                    
                     if len(current["text"]) == 1 and current["text"] in PUNC_CHARS:
                         current["punc"] = True
                     all_words.append(current)
                     idx = len(all_words) - 1
                     for xid in current["wids"]:
                         wid2idx[xid] = idx
-                    current = None   # reset for next word
+                    current = None   
 
-        # ----------- build plain-text transcript with AMI spacing -----------
+       
         for i, w in enumerate(all_words):
             if i == 0 or w["punc"]:
                 transcript_parts.append(w["text"])
@@ -122,6 +113,7 @@ class ICSIDataLoader:
         if not seg_el:
             return None
         st = float(seg_el[0].get('starttime', '0'))
+        
         # binary search for first word with start ≥ st
         lo, hi = 0, len(word_starts) - 1
         while lo < hi:
@@ -146,10 +138,10 @@ class ICSIDataLoader:
                 continue
             href = child[0].get('href', '')
 
-            if '.words.' in href:                       # pointer directly to a word
+            if '.words.' in href:                       
                 wid = re.search(r'id\(([^)]+)\)', href).group(1)
                 idx = wid2idx.get(wid)
-            else:                                       # pointer to a segment
+            else:                                       
                 idx = self._segment_start_idx(href, word_starts)
 
             if idx is not None:

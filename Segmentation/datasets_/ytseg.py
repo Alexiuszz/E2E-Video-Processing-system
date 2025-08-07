@@ -24,36 +24,11 @@ YTSEG_DATA_DIR = os.path.join(BASE_DIR, 'YTSEG_data', "clean")
 class YTSegDataLoader:
     def __init__(self, data_dir: str):
         self.data_dir = Path(data_dir)
-    #     self.ensure_nltk_data()
-    
-    # def ensure_nltk_data(self):
-    #     """Ensure required NLTK data is downloaded."""
-    #     try:
-    #         nltk.data.find('tokenizers/punkt')
-    #     except LookupError:
-    #         nltk.download('punkt')
+        
     
     def load_ytseg_data(self) -> List[Dict[str, Any]]:
         """
-        Load YTSeg dataset. Supports multiple formats:
-        1. JSON lines format (.jsonl)
-        2. Single JSON file with array
-        3. Multiple JSON files
-        
-        Expected format for each sample:
-        {
-            "id": "video_id",
-            "text": "full transcript text",
-            "sentences": ["sentence 1", "sentence 2", ...],
-            "segments": [
-                {
-                    "start_sentence": 0,
-                    "end_sentence": 5,
-                    "topic": "topic_name"
-                },
-                ...
-            ]
-        }
+        Load YTSeg dataset
         """
         data = []
         
@@ -158,7 +133,7 @@ class YTSegDataLoader:
                 print(f"Skipping {sample['id']}: Less than 60 sentences.")
         return meeting_data
 # def main():
-#     """Main evaluation function."""
+#    
 #     # Initialize evaluator
 #     evaluator = YTSegEvaluator(YTSEG_DATA_DIR)
     
@@ -166,7 +141,7 @@ class YTSegDataLoader:
 #     # For testing, limit to first 5 samples
 #     results = evaluator.evaluate_dataset(limit=5)
     
-#     # Save results to file
+#     
 #     # if results:
 #     #     results_file = Path(YTSEG_DATA_DIR) / "evaluation_results.json"
 #     #     with open(results_file, 'w') as f:
