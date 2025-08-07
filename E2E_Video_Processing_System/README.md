@@ -1,5 +1,5 @@
 
-# Lecture Transcription & Topic Segmentation System
+# FASTAPI Transcription & Topic Segmentation System
 
 This project provides a complete pipeline for processing lecture recordings. It includes media upload, automatic speech recognition (ASR), and semantic topic segmentation, all accessible via a FastAPI backend and a React frontend.
 
@@ -44,7 +44,6 @@ This project provides a complete pipeline for processing lecture recordings. It 
 1. Clone the repo:
 
 ```bash
-git clone https://github.com/Alexiuszz/E2E-Video-Processing-system.git
 cd E2E_Video_Processing_System/backend
 ```
 
